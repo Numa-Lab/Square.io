@@ -1,0 +1,5 @@
+name: Tetra
+version: '${project.version}'
+main: net.numalab.tetra.Tetra
+api-version: 1.16
+authors: [ Bun133 ]
