@@ -1,6 +1,7 @@
 package net.numalab.tetra
 
 import net.kunmc.lab.configlib.BaseConfig
+import net.kunmc.lab.configlib.value.BooleanValue
 import net.kunmc.lab.configlib.value.collection.StringListValue
 import org.bukkit.Bukkit
 import org.bukkit.plugin.Plugin
@@ -25,4 +26,9 @@ class TetraConfig(plugin: Plugin) : BaseConfig(plugin) {
         val removed = joinedTeams.value().also { it.remove(team.name) }
         joinedTeams.value(removed)
     }
+
+    /**
+     * 地面へのブロックの設置や、強制移動の切り替え
+     */
+    val isGoingOn = BooleanValue(false)
 }
