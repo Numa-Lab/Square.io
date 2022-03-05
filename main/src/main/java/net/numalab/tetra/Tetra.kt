@@ -11,7 +11,7 @@ class Tetra : JavaPlugin() {
 
     init {
         flyLib {
-
+            command(TetraCommand(config))
         }
     }
 
@@ -21,5 +21,6 @@ class Tetra : JavaPlugin() {
 
     override fun onDisable() {
         // Plugin shutdown logic
+        config.saveConfigIfPresent()
     }
 }
