@@ -1,6 +1,9 @@
 package net.numalab.tetra
 
 import dev.kotx.flylib.flyLib
+import net.numalab.tetra.geo.BlockLocation
+import net.numalab.tetra.test.AutoSelectTest
+import org.bukkit.event.block.BlockBreakEvent
 import org.bukkit.plugin.java.JavaPlugin
 
 class Tetra : JavaPlugin() {
@@ -12,6 +15,13 @@ class Tetra : JavaPlugin() {
     init {
         flyLib {
             command(TetraCommand(config))
+
+            listen(
+                BlockBreakEvent::class.java,
+                action = {
+                    AutoSelectTest(BlockLocation(it.block.location)).autoSelect(it.player)
+                    it.isCancelled = true
+                })
         }
     }
 
