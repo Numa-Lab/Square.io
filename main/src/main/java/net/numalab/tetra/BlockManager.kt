@@ -1,10 +1,11 @@
 package net.numalab.tetra
 
-import net.numalab.tetra.geo.BlockLocation
-import net.numalab.tetra.geo.Stroke
-import net.numalab.tetra.geo.autoSelectOutline
+import net.numalab.tetra.geo.MinecraftAdapter
+import net.numalab.tetra.geo.Pos
+import net.numalab.tetra.geo.PosSet
 import net.numalab.tetra.geo.fill
 import org.bukkit.*
+import org.bukkit.entity.Player
 import java.util.*
 
 /**
@@ -68,19 +69,14 @@ class BlockManager(val config: TetraConfig, plugin: Tetra) {
     }
 
     /**
-     * プレイヤーの移動の始点の羊毛
+     * 陣地のマップ
      */
-    private val playerStartWool = mutableMapOf<UUID, BlockLocation>()
+    private val territoryMap = mutableMapOf<ColorHelper, PosSet>()
 
     /**
-     * プレイヤーの移動の終点の羊毛
+     * プレイヤーごとの線
      */
-    private val playerEndWool = mutableMapOf<UUID, BlockLocation>()
-
-    /**
-     * プレイヤーの移動履歴のStroke
-     */
-    private val playerStroke = mutableMapOf<UUID, Stroke>()
+    private val playerLineMap = mutableMapOf<UUID, PosSet>()
 
     private fun task() {
         if (config.isGoingOn.value()) {
@@ -93,59 +89,65 @@ class BlockManager(val config: TetraConfig, plugin: Tetra) {
                     .mapNotNull { e -> Bukkit.getOnlinePlayers().find { it.name == e } }
                     .filter { it.gameMode == GameMode.SURVIVAL }
                     .forEach {
-                        val bottomLocation = BlockLocation(it.location.block.getRelative(0, -1, 0).location)
-                        if (bottomLocation.loc.block.type.isWool()) {
-                            val stroke = playerStroke[it.uniqueId]
-                            if (stroke == null) {
-                                // まだ陣地を出ていない
-                                playerStartWool[it.uniqueId] = bottomLocation
-                                return@forEach
-                            } else {
-                                // 陣地を出て、帰ってきた
-                                playerEndWool[it.uniqueId] = bottomLocation
+                        val bottomLocation = it.location.block.getRelative(0, -1, 0).location
+                        if (bottomLocation.block.type.isWool()) {
+                            addTerritory(teamColor, MinecraftAdapter.toPos(bottomLocation))
+                            if (playerHasLine(it)) {
+                                // 線がある場合は塗りつぶしをする
+                                val line = playerLineMap[it.uniqueId]!!
+                                fillWith(teamColor, line, bottomLocation.blockY.toDouble(), bottomLocation.world)
+                                playerLineMap.remove(it.uniqueId)   // 線をリセット
                             }
-
-                            val start = playerStartWool[it.uniqueId]
-                            val end = playerEndWool[it.uniqueId]
-                            if (start == null || end == null) {
-                                // 陣地を出たはずなのに記録がない
-                                return@forEach
-                            }
-
-
-                            // TODO 塗りつぶし処理
-                            val territory = bottomLocation.autoSelectOutline { l ->
-                                l.block.type.isWool() && l.block.type.sameColoredWool(teamColor.dye)
-                            }
-
-                            val toFill = territory.fill(stroke, start, end)
-                            if (toFill != null) {
-                                Bukkit.broadcastMessage("ToFill: ${toFill.size}")
-                                toFill.forEach { f ->
-                                    setColoredWoolAt(f.loc, teamColor)
-                                }
-                            } else {
-                                Bukkit.broadcastMessage("ToFill: null")
-                            }
-
-                            // 初期化
-                            playerStroke.remove(it.uniqueId)
-                            playerStartWool.remove(it.uniqueId)
-                            playerEndWool.remove(it.uniqueId)
                         } else {
-                            setColoredGlassAt(bottomLocation.loc, teamColor)
-                            val str = playerStroke[it.uniqueId]
-                            if (str == null) {
-                                playerStroke[it.uniqueId] = Stroke(listOf(bottomLocation))
-                            } else {
-                                if (str[str.lastIndex()] != bottomLocation) {
-                                    playerStroke[it.uniqueId] =
-                                        Stroke(listOf(*str.entry.toTypedArray(), bottomLocation))
-                                }
-                            }
+                            setColoredGlassAt(bottomLocation, teamColor)
+                            addPlayerLineRecord(it, MinecraftAdapter.toPos(bottomLocation))
                         }
                     }
             }
+        }
+    }
+
+    private fun isLineValid(line: PosSet, teamColor: ColorHelper): Boolean {
+        val territory = territoryMap[teamColor] ?: return false
+        return line.all { territory.contains(it) }
+    }
+
+    private fun addTerritory(color: ColorHelper, pos: Pos) {
+        if (territoryMap.containsKey(color)) {
+            territoryMap[color] = territoryMap[color]!! + pos
+        } else {
+            territoryMap[color] = listOf(pos)
+        }
+    }
+
+    private fun fillWith(color: ColorHelper, line: PosSet, y: Double, world: World) {
+        val territory = territoryMap[color]
+        if (territory != null) {
+            val toFill = fill(territory, line)
+            if (toFill != null) {
+                toFill.forEach {
+                    setColoredWoolAt(MinecraftAdapter.toLocation(it, world, y), color)
+                }
+            } else {
+                println("Filling was failed.")
+            }
+        } else {
+            // 領地がないのに塗ろうとしてる
+            // 多分通らない
+        }
+    }
+
+    private fun playerHasLine(player: Player): Boolean {
+        return playerLineMap.containsKey(player.uniqueId) && playerLineMap[player.uniqueId]!!.isNotEmpty()
+    }
+
+    private fun addPlayerLineRecord(player: Player, pos: Pos) {
+        val uuid = player.uniqueId
+        val line = playerLineMap[uuid]
+        if (line == null) {
+            playerLineMap[uuid] = listOf(pos)
+        } else {
+            playerLineMap[uuid] = line + pos
         }
     }
 }

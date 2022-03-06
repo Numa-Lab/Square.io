@@ -36,4 +36,6 @@ class ColorHelper(val dye: DyeColor, val textColor: TextColor) {
     )
 
     private constructor(team: Team) : this(team.color())
+
+    fun equalByDyeColor(other: ColorHelper) = dye == other.dye
 }
