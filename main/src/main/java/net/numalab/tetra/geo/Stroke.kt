@@ -2,6 +2,8 @@ package net.numalab.tetra.geo
 
 import org.bukkit.Location
 import org.bukkit.block.BlockFace
+import java.lang.Integer.max
+import java.lang.Integer.min
 
 class BlockLocation(val loc: Location) {
     init {
@@ -85,25 +87,30 @@ class FilledArea(val outline: Stroke) {
 /**
  * 囲まれた部分を塗る
  * @param stroke 始点、終点が[FilledArea]に隣接していなければいけない
+ * @param start FilledAreaにある始点
+ * @param end FilledAreaにある終点
  */
-fun FilledArea.fill(stroke: Stroke): List<BlockLocation>? {
-    if (checkRelative(stroke[0]) && checkRelative(stroke[stroke.lastIndex()])) {
-        val startRelative = stroke[0].getRelatives4()
-        val outLineStart = this.outline.entry.find { startRelative.contains(it) }
-        val endRelative = stroke[stroke.lastIndex()].getRelatives4()
-        val outLineEnd = this.outline.entry.find { endRelative.contains(it) }
+fun FilledArea.fill(stroke: Stroke, start: BlockLocation, end: BlockLocation): List<BlockLocation>? {
+    if (checkRelative(stroke[0]) && checkRelative(stroke[stroke.lastIndex()]) && this.outline.entry.contains(start) && this.outline.entry.contains(
+            end
+        )
+    ) {
+        val outLineStartIndex = this.outline.entry.indexOf(start)
+        val outLineEndIndex = this.outline.entry.indexOf(end)
+        if (outLineStartIndex == -1 || outLineEndIndex == -1) {
+            // 到達するはずがないソース
+            throw IllegalArgumentException("start or end is not in outline")
+        }
 
-        if (outLineStart == null || outLineEnd == null) return null // 接していた気がするが接していない気がする
-        val outLineStartIndex = this.outline.entry.indexOf(outLineStart)
-        val outLineEndIndex = this.outline.entry.indexOf(outLineEnd)
-        if (outLineStartIndex == -1 || outLineEndIndex == -1) return null // 接していた気がするが接していない気がする
-
-        val outLineRelative = this.outline.entry.subList(outLineStartIndex, outLineEndIndex)
+        val outLineRelative =
+            this.outline.entry.subList(
+                min(outLineStartIndex, outLineEndIndex),
+                max(outLineStartIndex, outLineEndIndex) + 1
+            )
 
         val ray = stroke.rayTraceAll()
         val connected = Stroke(listOf(*ray.entry.toTypedArray(), *outLineRelative.toTypedArray()))
-        val rayFilled = FilledArea(connected)
-        return rayFilled.fillSelf()
+        return FilledArea(connected).fillInside(false)  // 内側が塗るべき場所になっているはず
     } else {
         // 論外
         return null
@@ -137,8 +144,8 @@ fun Stroke.rayTrace(from: BlockFace): List<BlockLocation> {
             if (this.zMax != null && this.zMin != null && this.xMax != null && this.xMin != null) {
                 val startZ = this.zMax + 1 // 始点
                 val xRange = this.xMin..this.xMax
-                xRange.mapNotNull { x ->
-                    for (z in startZ..this.zMin) {
+                val rayed = xRange.mapNotNull { x ->
+                    for (z in startZ downTo this.zMin) {
                         if (this[x, z] != null) {
                             return@mapNotNull BlockLocation(
                                 Location(
@@ -148,12 +155,13 @@ fun Stroke.rayTrace(from: BlockFace): List<BlockLocation> {
                             )
                         }
                     }
-
                     return@mapNotNull null // ここには来ないはず
                 }
-            }
 
-            return emptyList()
+                return rayed
+            } else {
+                return emptyList()
+            }
         }
         BlockFace.SOUTH -> {
             if (this.zMax != null && this.zMin != null && this.xMax != null && this.xMin != null) {
@@ -204,7 +212,7 @@ fun Stroke.rayTrace(from: BlockFace): List<BlockLocation> {
                 val startX = this.xMax + 1 // 始点
                 val zRange = this.zMin..this.zMax
                 zRange.mapNotNull { z ->
-                    for (x in startX..this.xMin) {
+                    for (x in startX downTo this.xMin) {
                         if (this[x, z] != null) {
                             return@mapNotNull BlockLocation(
                                 Location(
@@ -229,34 +237,41 @@ fun Stroke.rayTrace(from: BlockFace): List<BlockLocation> {
  * FilledAreaの自分自身を塗る
  * @param containOutline 境界線を含めるかどうか
  */
-fun FilledArea.fillSelf(containOutline: Boolean = false): List<BlockLocation> {
-    // 境界線すべてに対して到達済みかどうか(Bool)
-    val flag = outline.entry.associateWith { false }.toMutableMap()
-    val insides = mutableListOf<BlockLocation>()
-
-    // 境界線を走査
-    for (index in 0 until flag.size) {
-        val (loc, bool) = flag.entries.elementAt(index)
-        if (bool) continue // 到達済みならスキップ
-
-        val relatives = loc.getRelatives4().filter { !flag.keys.contains(it) }
-        val inside = relatives.filter { isInside(it) && !insides.contains(it) }
-        insides.addAll(inside)
+fun FilledArea.fillInside(containOutline: Boolean = false): List<BlockLocation> {
+    val first = this.outline.entry.firstOrNull()
+    if (first == null) {
+        return emptyList()
+    } else {
+        val auto = first.autoSelect { isInside(BlockLocation(it)) }
+        if (containOutline) {
+            return listOf(*auto.toTypedArray(), *this.outline.entry.toTypedArray())
+        } else {
+            return auto
+        }
     }
-
-    if (insides.isEmpty()) return emptyList()
-    return insides.also { it.addAll(FilledArea(Stroke(insides)).fillSelf(containOutline)) }
 }
 
 /**
  * 例のあれで判定する
  */
 fun FilledArea.isInside(loc: BlockLocation): Boolean {
+    if (this.outline.contains(loc)) {
+        return true
+    }
+
     return if (this.outline.xMax != null) {
         var count = 0
+        var lastCounted = false
         for (x in loc.loc.blockX..this.outline.xMax) {
             if (this.outline[x, loc.loc.blockZ] != null) {
-                count++
+                if (lastCounted) {
+
+                } else {
+                    count++
+                    lastCounted = true
+                }
+            } else {
+                if (lastCounted) lastCounted = false
             }
         }
         count % 2 != 0
@@ -298,21 +313,22 @@ fun BlockLocation.getRelatives4(): List<BlockLocation> {
  * [BlockLocation]から[filter]を満たしているものを探して自動的に探索する
  */
 fun BlockLocation.autoSelect(
-    filter: (Location) -> Boolean,
-    checked: List<BlockLocation> = mutableListOf()
+    filter: (Location) -> Boolean
 ): List<BlockLocation> {
-    var out = mutableListOf(this)
+    val checking = mutableListOf<BlockLocation>(this)
+    val checkedTrue = mutableListOf<BlockLocation>()
+    val checkedFalse = mutableListOf<BlockLocation>()
 
-    val re = this.getRelatives4().filter { filter(it.loc) && !checked.contains(it) }
-
-    out.addAll(re)
-
-    re.forEach {
-        out.addAll(it.autoSelect(filter, out))
-        out = forceDistinct(out)
+    while (checking.isNotEmpty()) {
+        val current = checking.removeAt(0)
+        if (filter(current.loc)) {
+            checkedTrue.add(current)
+            checking.addAll(current.getRelatives4().filter { !(checkedTrue.contains(it) || checkedFalse.contains(it)) })
+        } else {
+            checkedFalse.add(current)
+        }
     }
-
-    return out
+    return checkedTrue
 }
 
 private fun forceDistinct(from: List<BlockLocation>): MutableList<BlockLocation> {

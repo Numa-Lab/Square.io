@@ -1,8 +1,11 @@
 package net.numalab.tetra
 
 import net.numalab.tetra.geo.BlockLocation
+import net.numalab.tetra.geo.Stroke
 import net.numalab.tetra.geo.autoSelectOutline
+import net.numalab.tetra.geo.fill
 import org.bukkit.*
+import java.util.*
 
 /**
  * チームごとに羊毛、色付きガラスの準備をして地面に設置するクラス
@@ -64,6 +67,21 @@ class BlockManager(val config: TetraConfig, plugin: Tetra) {
         plugin.server.scheduler.runTaskTimer(plugin, Runnable { task() }, 1, 1)
     }
 
+    /**
+     * プレイヤーの移動の始点の羊毛
+     */
+    private val playerStartWool = mutableMapOf<UUID, BlockLocation>()
+
+    /**
+     * プレイヤーの移動の終点の羊毛
+     */
+    private val playerEndWool = mutableMapOf<UUID, BlockLocation>()
+
+    /**
+     * プレイヤーの移動履歴のStroke
+     */
+    private val playerStroke = mutableMapOf<UUID, Stroke>()
+
     private fun task() {
         if (config.isGoingOn.value()) {
             // 地面に設置する
@@ -77,14 +95,54 @@ class BlockManager(val config: TetraConfig, plugin: Tetra) {
                     .forEach {
                         val bottomLocation = BlockLocation(it.location.block.getRelative(0, -1, 0).location)
                         if (bottomLocation.loc.block.type.isWool()) {
+                            val stroke = playerStroke[it.uniqueId]
+                            if (stroke == null) {
+                                // まだ陣地を出ていない
+                                playerStartWool[it.uniqueId] = bottomLocation
+                                return@forEach
+                            } else {
+                                // 陣地を出て、帰ってきた
+                                playerEndWool[it.uniqueId] = bottomLocation
+                            }
+
+                            val start = playerStartWool[it.uniqueId]
+                            val end = playerEndWool[it.uniqueId]
+                            if (start == null || end == null) {
+                                // 陣地を出たはずなのに記録がない
+                                return@forEach
+                            }
+
+
                             // TODO 塗りつぶし処理
                             val territory = bottomLocation.autoSelectOutline { l ->
                                 l.block.type.isWool() && l.block.type.sameColoredWool(teamColor.dye)
                             }
 
-                            println("[Debug] territoryOutLine: ${territory.outline.size()}")
+                            val toFill = territory.fill(stroke, start, end)
+                            if (toFill != null) {
+                                Bukkit.broadcastMessage("ToFill: ${toFill.size}")
+                                toFill.forEach { f ->
+                                    setColoredWoolAt(f.loc, teamColor)
+                                }
+                            } else {
+                                Bukkit.broadcastMessage("ToFill: null")
+                            }
+
+                            // 初期化
+                            playerStroke.remove(it.uniqueId)
+                            playerStartWool.remove(it.uniqueId)
+                            playerEndWool.remove(it.uniqueId)
                         } else {
                             setColoredGlassAt(bottomLocation.loc, teamColor)
+                            val str = playerStroke[it.uniqueId]
+                            if (str == null) {
+                                playerStroke[it.uniqueId] = Stroke(listOf(bottomLocation))
+                            } else {
+                                if (str[str.lastIndex()] != bottomLocation) {
+                                    playerStroke[it.uniqueId] =
+                                        Stroke(listOf(*str.entry.toTypedArray(), bottomLocation))
+                                }
+                            }
                         }
                     }
             }
@@ -142,5 +200,12 @@ fun Material.sameColoredWool(dyeColor: DyeColor): Boolean {
     if (!this.isWool()) return false
     else {
         return wools[dyeColor] == this
+    }
+}
+
+fun Material.sameColoredGlass(dyeColor: DyeColor): Boolean {
+    if (!this.isGlass()) return false
+    else {
+        return glasses[dyeColor] == this
     }
 }
