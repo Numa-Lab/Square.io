@@ -120,7 +120,7 @@ class BlockManager(val config: TetraConfig, plugin: Tetra) {
     private fun fillWith(color: ColorHelper, line: PosSet, y: Double, world: World) {
         val territory = territoryMap[color]
         if (territory != null) {
-            val toFill = fill(territory, line)
+            val toFill = fillWithForceData(line, territory)
             if (toFill != null) {
                 println("ToFill:${toFill.size}")
                 val r = ColorHelper.random()
@@ -148,7 +148,9 @@ class BlockManager(val config: TetraConfig, plugin: Tetra) {
         if (line == null) {
             playerLineMap[uuid] = listOf(pos)
         } else {
-            playerLineMap[uuid] = line + pos
+            if (line.last() != pos) {
+                playerLineMap[uuid] = line + pos
+            }
         }
     }
 

@@ -10,6 +10,12 @@ class Pos(val x: Int, val z: Int) {
         }
         return false
     }
+
+    override fun hashCode(): Int {
+        var result = x
+        result = 31 * result + z
+        return result
+    }
 }
 
 typealias PosSet = List<Pos>
@@ -60,12 +66,36 @@ fun fill(one: PosSet, two: PosSet): PosSet? {
 }
 
 /**
+ * @param one which has force sort order and marked as sorted
+ * @WIP
+ */
+@Deprecated("Use fill(one, two) instead")
+fun fillWithForceData(one: PosSet, two: PosSet): PosSet? {
+    val rayTraced = rayTraceAllWithData(one + two)
+    val map = rayTraced.associate { it.second to it.first }
+    return rayTraced.map { it.first }.forceCast().getInsideWithData(one.mapNotNull { map[it]!! }, false)
+}
+
+/**
  * 内側を取得
  * @param containSelf trueの場合、自身も含める
  */
 //TODO おかしい
 fun PosSet.getInside(containSelf: Boolean = false): PosSet? {
     val sorted = this.sort() ?: return null
+    val out = mutableListOf<Pos>()
+    for (x in sorted.minX()..sorted.maxX()) {
+        for (z in sorted.minZ()..sorted.maxZ()) {
+            if (sorted.isInside(Pos(x, z), containSelf)) {
+                out.add(Pos(x, z))
+            }
+        }
+    }
+    return out
+}
+
+fun PosSet.getInsideWithData(forceData: PosSet, containSelf: Boolean = false): PosSet? {
+    val sorted = this.sortWithData(forceData) ?: return null
     val out = mutableListOf<Pos>()
     for (x in sorted.minX()..sorted.maxX()) {
         for (z in sorted.minZ()..sorted.maxZ()) {
@@ -95,7 +125,7 @@ fun PosSet.isInside(pos: Pos, containSelf: Boolean): Boolean {
         }
     }
 //    println(abs(angle))
-    return abs(angle) >= 1.9 * Math.PI   // 誤差かなと思って1.9にしてます(理論上は2)
+    return abs(angle) >= 1.985 * Math.PI   // 誤差かなと思って1.9にしてます(理論上は2)
 }
 
 /**
@@ -133,6 +163,18 @@ fun rayTraceAll(poses: PosSet): PosSetNullable {
     val fromPZ = rayTraceFromPZ(poses)
     val fromNZ = rayTraceFromNZ(poses)
     return (fromPX + fromNX + fromPZ + fromNZ).safeCast().distinct()
+}
+
+/**
+ * @return Pair#first is the pos, Pair#second is the hit pos
+ */
+fun rayTraceAllWithData(poses: PosSet): List<Pair<Pos, Pos>> {
+    val fromPX = rayTraceFromPXWithData(poses)
+    val fromNX = rayTraceFromNXWithData(poses)
+    val fromPZ = rayTraceFromPZWithData(poses)
+    val fromNZ = rayTraceFromNZWithData(poses)
+    return (fromPX + fromNX + fromPZ + fromNZ).filterNotNull()
+        .distinctBy { it.first.x to it.first.z to it.second.x to it.second.z }
 }
 
 fun rayTraceFromPX(poses: PosSet): PosSetNullable {
@@ -173,6 +215,50 @@ fun rayTraceFromNZ(poses: PosSet): PosSetNullable {
         for (z in poses.minZ()..poses.maxZ()) {
             if (poses.contains(Pos(it.x, z))) {
                 return@map Pos(it.x, z - 1)
+            }
+        }
+        return@map null
+    }
+}
+
+fun rayTraceFromPXWithData(poses: PosSet): List<Pair<Pos, Pos>?> {
+    return poses.map {
+        for (x in poses.maxX() downTo poses.minX()) {
+            if (poses.contains(Pos(x, it.z))) {
+                return@map Pair(Pos(x + 1, it.z), Pos(x, it.z))
+            }
+        }
+        return@map null
+    }
+}
+
+fun rayTraceFromNXWithData(poses: PosSet): List<Pair<Pos, Pos>?> {
+    return poses.map {
+        for (x in poses.minX()..poses.maxX()) {
+            if (poses.contains(Pos(x, it.z))) {
+                return@map Pair(Pos(x - 1, it.z), Pos(x, it.z))
+            }
+        }
+        return@map null
+    }
+}
+
+fun rayTraceFromPZWithData(poses: PosSet): List<Pair<Pos, Pos>?> {
+    return poses.map {
+        for (z in poses.maxZ() downTo poses.minZ()) {
+            if (poses.contains(Pos(it.x, z))) {
+                return@map Pair(Pos(it.x, z + 1), Pos(it.x, z))
+            }
+        }
+        return@map null
+    }
+}
+
+fun rayTraceFromNZWithData(poses: PosSet): List<Pair<Pos, Pos>?> {
+    return poses.map {
+        for (z in poses.minZ()..poses.maxZ()) {
+            if (poses.contains(Pos(it.x, z))) {
+                return@map Pair(Pos(it.x, z - 1), Pos(it.x, z))
             }
         }
         return@map null
@@ -247,4 +333,34 @@ private fun rightest(list: PosSet, from: Pos): Pos {
         }
     }
     return rightest
+}
+
+/**
+ * [forceData]を強制的にソート済みとみなして扱う
+ * [forceData]はこのセットに含まれているべき
+ */
+fun PosSet.sortWithData(forceData: PosSet): PosSet? {
+    val removed = this.filter { !forceData.contains(it) }
+    val first = forceData[0]
+    val last = forceData[forceData.lastIndex]
+
+    val marged = removed + first + last
+    val sorted = marged.sort() ?: return null
+
+    val firstIndex = sorted.indexOf(first)
+    val lastIndex = sorted.indexOf(last)
+    if (firstIndex > lastIndex) {
+        return sorted.toMutableList().also {
+            it.remove(last)
+            it.addAll(firstIndex + 1, forceData)
+        }
+    } else if (firstIndex < lastIndex) {
+        return sorted.toMutableList().also {
+            it.remove(first)
+            it.addAll(lastIndex - 1, forceData.asReversed())
+        }
+    } else {
+        // Should not be here
+        return sorted
+    }
 }
