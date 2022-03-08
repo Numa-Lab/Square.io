@@ -1,35 +1,29 @@
 package net.numalab.tetra.test
 
-import net.numalab.tetra.geo.*
+import net.numalab.tetra.geo.Pos
+import net.numalab.tetra.geo.PosSet
+import net.numalab.tetra.geo.PosSetNullable
+import net.numalab.tetra.geo.isInside
 
 fun main() {
-    FillTest().test()
+    InsideTest().test()
 }
 
-class FillTest {
+class InsideTest {
     val test1 = listOf(
-        "0001110000",
-        "0000000000",
-        "0000000000",
-        "0000000000",
-        "0000000000"
+        "0011100",
+        "0110010",
+        "0011100"
     )
 
-    val test2 = listOf(
-        "0000000000",
-        "0001010000",
-        "0001010000",
-        "0000100000",
-        "0000000000",
-    )
+    fun test() {
+        val r1 = convertFromString(test1)
+        print(r1, "test1")
 
-    val expected = listOf(
-        "1111111111",
-        "1111111111",
-        "1111111111",
-        "1111111111",
-        "1000101001"
-    )
+        val p = Pos(6, 0)
+
+        println("r1.isInside = ${r1.isInside(p, false)}")
+    }
 
     private fun convertFromString(str: List<String>): PosSet {
         return str.mapIndexed { z, string ->
@@ -61,39 +55,6 @@ class FillTest {
         }
 
         return out
-    }
-
-    fun test() {
-        val pos1 = convertFromString(test1)
-        print(pos1, "pos1")
-        val pos2 = convertFromString(test2)
-        print(pos2, "pos2")
-
-        val pos3 = pos1 + pos2
-        print(pos3, "pos1 + pos2")
-
-
-        val rayTraced = rayTraceAll(pos3)
-        print(rayTraced, "rayTraced")
-
-        val rayTracePX = rayTraceFromPX(pos3)
-        print(rayTracePX, "rayTracePX")
-
-        val rayTraceSafe = rayTraced.cast()
-
-        if (rayTraceSafe != null) {
-            print(rayTraceSafe, "rayTraceSafe")
-
-            val inside = rayTraceSafe.getInside()
-            print(inside, "inside")
-        }
-
-        val fill = fill(pos1, pos2)
-        if (fill != null) {
-            print(fill, "fill")
-        } else {
-            println("fill is null")
-        }
     }
 
     private fun print(pos: PosSet, name: String) {

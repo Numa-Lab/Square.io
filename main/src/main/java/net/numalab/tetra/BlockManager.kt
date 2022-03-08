@@ -1,9 +1,6 @@
 package net.numalab.tetra
 
-import net.numalab.tetra.geo.MinecraftAdapter
-import net.numalab.tetra.geo.Pos
-import net.numalab.tetra.geo.PosSet
-import net.numalab.tetra.geo.fill
+import net.numalab.tetra.geo.*
 import org.bukkit.*
 import org.bukkit.entity.Player
 import java.util.*
@@ -125,12 +122,16 @@ class BlockManager(val config: TetraConfig, plugin: Tetra) {
         if (territory != null) {
             val toFill = fill(territory, line)
             if (toFill != null) {
+                println("ToFill:${toFill.size}")
+                val r = ColorHelper.random()
                 toFill.forEach {
-                    setColoredWoolAt(MinecraftAdapter.toLocation(it, world, y), color)
+                    setColoredWoolAt(MinecraftAdapter.toLocation(it, world, y), /*color*/ r)
                 }
             } else {
                 println("Filling was failed.")
             }
+//
+//            debugFilling(territory, line, color, y, world)
         } else {
             // 領地がないのに塗ろうとしてる
             // 多分通らない
@@ -148,6 +149,32 @@ class BlockManager(val config: TetraConfig, plugin: Tetra) {
             playerLineMap[uuid] = listOf(pos)
         } else {
             playerLineMap[uuid] = line + pos
+        }
+    }
+
+    private fun debugFilling(territory: PosSet, line: PosSet, color: ColorHelper, y: Double, world: World) {
+        val added = territory + line
+        val rayTracePX = rayTraceFromPX(added)
+        val rayTracePZ = rayTraceFromPZ(added)
+        val rayTraceNX = rayTraceFromNX(added)
+        val rayTraceNZ = rayTraceFromNZ(added)
+        val rayTraceAll = rayTracePX + rayTracePZ + rayTraceNX + rayTraceNZ
+
+        fillAt(rayTraceAll, ColorHelper.random(), y, world)
+
+        val inside = rayTraceAll.forceCast().getInside()
+
+        fillAt(inside, ColorHelper.random(), y, world)
+    }
+
+    @JvmName("fillAtN")
+    private fun fillAt(posn: PosSetNullable, color: ColorHelper, y: Double, world: World) {
+        fillAt(posn.filterNotNull(), color, y, world)
+    }
+
+    private fun fillAt(posset: PosSet, color: ColorHelper, y: Double, world: World) {
+        posset.forEach {
+            setColoredWoolAt(MinecraftAdapter.toLocation(it, world, y), color)
         }
     }
 }

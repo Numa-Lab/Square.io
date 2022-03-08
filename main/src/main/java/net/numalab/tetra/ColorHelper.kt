@@ -28,6 +28,13 @@ class ColorHelper(val dye: DyeColor, val textColor: TextColor) {
         }
 
         fun getBy(team: Team) = getBy(team.color())
+
+        fun random(): ColorHelper {
+            val rk = mapping.keys.random()
+            val rv = mapping[rk]!!
+
+            return ColorHelper(rv, rk)
+        }
     }
 
     private constructor(textColor: TextColor) : this(
