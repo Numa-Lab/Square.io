@@ -9,15 +9,15 @@ fun main() {
 class FillTest {
     val test1 = listOf(
         "0001110000",
-        "0000000000",
-        "0000000000",
+        "0011111000",
+        "0010001000",
         "0000000000",
         "0000000000"
     )
 
     val test2 = listOf(
         "0000000000",
-        "0001010000",
+        "0000000000",
         "0001010000",
         "0000100000",
         "0000000000",
@@ -84,8 +84,12 @@ class FillTest {
         if (rayTraceSafe != null) {
             print(rayTraceSafe, "rayTraceSafe")
 
-            val inside = rayTraceSafe.getInside()
-            print(inside, "inside")
+            val inside = rayTraceSafe.getInside(true)
+            if (inside == null) {
+                println("inside is null")
+            } else {
+                print(inside, "inside")
+            }
         }
 
         val fill = fill(pos1, pos2)

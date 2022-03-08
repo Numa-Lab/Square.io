@@ -163,8 +163,11 @@ class BlockManager(val config: TetraConfig, plugin: Tetra) {
         fillAt(rayTraceAll, ColorHelper.random(), y, world)
 
         val inside = rayTraceAll.forceCast().getInside()
-
-        fillAt(inside, ColorHelper.random(), y, world)
+        if (inside == null) {
+            println("Inside is null.")
+        } else {
+            fillAt(inside, ColorHelper.random(), y, world)
+        }
     }
 
     @JvmName("fillAtN")

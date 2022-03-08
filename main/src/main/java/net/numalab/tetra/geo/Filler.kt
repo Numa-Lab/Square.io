@@ -56,7 +56,7 @@ fun fill(one: PosSet, two: PosSet): PosSet? {
     if (rayTraced.any { it == null }) {
         return null
     }
-    return rayTraced.forceCast().getInside()
+    return rayTraced.forceCast().getInside(false)
 }
 
 /**
@@ -64,11 +64,12 @@ fun fill(one: PosSet, two: PosSet): PosSet? {
  * @param containSelf trueの場合、自身も含める
  */
 //TODO おかしい
-fun PosSet.getInside(containSelf: Boolean = false): PosSet {
+fun PosSet.getInside(containSelf: Boolean = false): PosSet? {
+    val sorted = this.sort() ?: return null
     val out = mutableListOf<Pos>()
-    for (x in minX()..maxX()) {
-        for (z in minZ()..maxZ()) {
-            if (this.isInside(Pos(x, z), containSelf)) {
+    for (x in sorted.minX()..sorted.maxX()) {
+        for (z in sorted.minZ()..sorted.maxZ()) {
+            if (sorted.isInside(Pos(x, z), containSelf)) {
                 out.add(Pos(x, z))
             }
         }
@@ -93,30 +94,18 @@ fun PosSet.isInside(pos: Pos, containSelf: Boolean): Boolean {
             angle += a
         }
     }
-    println(abs(angle))
-    return abs(angle) > 2.5 * Math.PI   // 誤差かなと思って2.5にしてます(理論上は2)
+//    println(abs(angle))
+    return abs(angle) >= 1.9 * Math.PI   // 誤差かなと思って1.9にしてます(理論上は2)
 }
 
 /**
  * @return [from]から[to1]と[from]から[to2]への角度(ラジアン)
  */
 fun angle(from: Pos, to1: Pos, to2: Pos): Double {
-//    val r1 = atan2((to1.x - from.x).toDouble(), (to1.z - from.z).toDouble())
-//    val r2 = atan2((to2.x - from.x).toDouble(), (to2.z - from.z).toDouble())
-//
-//    println(
-//        "[Angle]:(${to1.x - from.x},${to1.z - from.z}),(${to2.x - from.x},${to2.z - from.z}):${
-//            angleDiff(
-//                r1,
-//                r2
-//            )
-//        }:${r1},${r2}"
-//    )
-//
-//    return angleDiff(r1, r2)
-
     val cos = ((to1.x - from.x) * (to2.x - from.x) + (to1.z - from.z) * (to2.z - from.z)) / (
-            sqrt(((to1.x - from.x) * (to1.x - from.x) + (to1.z - from.z) * (to1.z - from.z)).toDouble()) *
+            sqrt(
+                ((to1.x - from.x) * (to1.x - from.x) + (to1.z - from.z) * (to1.z - from.z)).toDouble()
+            ) *
                     sqrt(
                         ((to2.x - from.x) * (to2.x - from.x) + (to2.z - from.z) * (to2.z - from.z)).toDouble()
                     )
@@ -188,4 +177,74 @@ fun rayTraceFromNZ(poses: PosSet): PosSetNullable {
         }
         return@map null
     }
+}
+
+/**
+ * Sort and make a list of PosSet that express convex hull
+ */
+fun PosSet.sortConvexHull(): PosSet? {
+    val minZs = this.filter { it.z == this.minZ() }
+    val min = minZs.minByOrNull { it.x } ?: return null
+    var A = min
+    val L = mutableListOf<Pos>()
+    do {
+        L.add(A)
+        var B = this[0]
+        for (i in 1 until this.size) {
+            val C = this[i]
+            if (B == A) {
+                B = C
+            } else {
+                val v = (B.x - A.x) * (C.z - A.z) - (C.x - A.x) * (B.z - A.z)
+                if (v > 0 || (v == 0 && abs((C.x - A.x) * (C.x - A.x) + (C.z - A.z) * (C.z - A.z)) > abs((B.x - A.x) * (B.x - A.x) + (B.z - A.z) * (B.z - A.z)))) {
+                    B = C
+                }
+            }
+        }
+        A = B
+    } while (A != L[0])
+
+    return L
+}
+
+/**
+ * ソートする
+ * 1.x座標が最も小さく、z座標が最小の物を取ってくる
+ * 2.すべての点に対して距離が一番小さい物を取ってくる
+ * 3.(2で長さが一致する場合は外積を取り、右側にあるものを選ぶ)
+ * 4. 2,3の結果を保存する
+ * 5. 4の結果が1の結果と一致するまで繰り返す
+ */
+fun PosSet.sort(): PosSet? {
+    val minZs = this.filter { it.z == this.minZ() }
+    val min = minZs.minByOrNull { it.x } ?: return null
+    var current = min
+    val result = mutableListOf<Pos>()
+    do {
+        result.add(current)
+        val filtered = this.filter { !result.contains(it) }
+        if (filtered.isEmpty()) break
+        val minDis =
+            filtered.minOf { (it.x - current.x) * (it.x - current.x) + (it.z - current.z) * (it.z - current.z) }
+        val nearest =
+            filtered.filter { (it.x - current.x) * (it.x - current.x) + (it.z - current.z) * (it.z - current.z) == minDis }  // TODO 最適化
+        if (nearest.size == 1) {
+            current = nearest[0]
+        } else {
+            current = rightest(nearest, current)
+        }
+    } while (current != result[0])
+
+    return result
+}
+
+private fun rightest(list: PosSet, from: Pos): Pos {
+    var rightest = list[0]
+    for (index in 1..list.lastIndex) {
+        val current = list[index]
+        if ((rightest.x - from.x) * (current.z - from.z) - (current.x - from.x) * (rightest.z - from.z) > 0) {
+            rightest = current
+        }
+    }
+    return rightest
 }
