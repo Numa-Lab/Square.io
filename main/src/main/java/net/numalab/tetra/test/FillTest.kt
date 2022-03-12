@@ -20,15 +20,15 @@ class FillTest {
         "0000000000",
         "0001010000",
         "0000100000",
-        "0000000000",
+        "0000000000"
     )
 
     val expected = listOf(
-        "1111111111",
-        "1111111111",
-        "1111111111",
-        "1111111111",
-        "1000101001"
+        "0001110000",
+        "0011111000",
+        "0011111000",
+        "0000100000",
+        "0000000000"
     )
 
     private fun convertFromString(str: List<String>): PosSet {
@@ -72,32 +72,16 @@ class FillTest {
         val pos3 = pos1 + pos2
         print(pos3, "pos1 + pos2")
 
+        val xRange = (pos3.minX() - 1)..(pos3.maxX() + 1)
+        val zRange = (pos3.minZ() - 1)..(pos3.maxZ() + 1)
 
-        val rayTraced = rayTraceAll(pos3)
-        print(rayTraced, "rayTraced")
-
-        val rayTracePX = rayTraceFromPX(pos3)
-        print(rayTracePX, "rayTracePX")
-
-        val rayTraceSafe = rayTraced.cast()
-
-        if (rayTraceSafe != null) {
-            print(rayTraceSafe, "rayTraceSafe")
-
-            val inside = rayTraceSafe.getInside(true)
-            if (inside == null) {
-                println("inside is null")
-            } else {
-                print(inside, "inside")
-            }
-        }
+        val outside = fillInRange(pos3, xRange, zRange, Pos(pos3.maxX() + 1, pos3.maxZ() + 1))
+        print(outside, "outside")
+        val inside = flipInRange(outside, pos3.minX()..pos3.maxX(), pos3.minZ()..pos3.maxZ())
+        print(inside, "inside")
 
         val fill = fill(pos1, pos2)
-        if (fill != null) {
-            print(fill, "fill")
-        } else {
-            println("fill is null")
-        }
+        print(fill, "fill")
     }
 
     private fun print(pos: PosSet, name: String) {

@@ -120,18 +120,15 @@ class BlockManager(val config: TetraConfig, plugin: Tetra) {
     private fun fillWith(color: ColorHelper, line: PosSet, y: Double, world: World) {
         val territory = territoryMap[color]
         if (territory != null) {
-            val toFill = fillWithForceData(line, territory)
-            if (toFill != null) {
-                println("ToFill:${toFill.size}")
-                val r = ColorHelper.random()
-                toFill.forEach {
-                    setColoredWoolAt(MinecraftAdapter.toLocation(it, world, y), /*color*/ r)
-                }
-            } else {
-                println("Filling was failed.")
+            val t = territory.toMutableSet()
+            val toFill = fill(line, territory)
+            println("ToFill:${toFill.size}")
+            toFill.forEach {
+                setColoredWoolAt(MinecraftAdapter.toLocation(it, world, y), color)
+                t.add(it)
             }
-//
-//            debugFilling(territory, line, color, y, world)
+
+            territoryMap[color] = t.toList()
         } else {
             // 領地がないのに塗ろうとしてる
             // 多分通らない
@@ -151,24 +148,6 @@ class BlockManager(val config: TetraConfig, plugin: Tetra) {
             if (line.last() != pos) {
                 playerLineMap[uuid] = line + pos
             }
-        }
-    }
-
-    private fun debugFilling(territory: PosSet, line: PosSet, color: ColorHelper, y: Double, world: World) {
-        val added = territory + line
-        val rayTracePX = rayTraceFromPX(added)
-        val rayTracePZ = rayTraceFromPZ(added)
-        val rayTraceNX = rayTraceFromNX(added)
-        val rayTraceNZ = rayTraceFromNZ(added)
-        val rayTraceAll = rayTracePX + rayTracePZ + rayTraceNX + rayTraceNZ
-
-        fillAt(rayTraceAll, ColorHelper.random(), y, world)
-
-        val inside = rayTraceAll.forceCast().getInside()
-        if (inside == null) {
-            println("Inside is null.")
-        } else {
-            fillAt(inside, ColorHelper.random(), y, world)
         }
     }
 
