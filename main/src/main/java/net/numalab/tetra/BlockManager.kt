@@ -122,12 +122,11 @@ class BlockManager(val config: TetraConfig, plugin: Tetra) {
         if (territory != null) {
             val t = territory.toMutableSet()
             val toFill = fill(line, territory)
-            println("ToFill:${toFill.size}")
+            println("Filling ${toFill.size}blocks")
             toFill.forEach {
                 setColoredWoolAt(MinecraftAdapter.toLocation(it, world, y), color)
-                t.add(it)
             }
-
+            t.addAll(toFill)
             territoryMap[color] = t.toList()
         } else {
             // 領地がないのに塗ろうとしてる

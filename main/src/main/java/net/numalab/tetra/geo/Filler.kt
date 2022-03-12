@@ -67,7 +67,6 @@ fun fill(one: PosSet, two: PosSet): PosSet {
 
     val outside = fillInRange(all, xRange, zRange, Pos(all.maxX() + 1, all.maxZ() + 1))
     val inside = flipInRange(outside, all.minX()..all.maxX(), all.minZ()..all.maxZ())
-
     return inside
 }
 
@@ -97,14 +96,14 @@ fun fillInRange(all: PosSet, xRange: IntRange, zRange: IntRange, startFrom: Pos)
     val stack = mutableListOf(startFrom)
     val result = mutableListOf<Pos>()
 
-    var counter = 0
+//    var counter = 0
     do {
         val current = stack.removeAt(0)
         result.add(current)
         val toAdd = current.get4Relative().filter { it.x in xRange && it.z in zRange && it !in all && it !in result }
         stack.addAll(toAdd)
-        counter++
-        print(result, "result$counter")
+//        counter++
+//        print(result, "result$counter")
     } while (stack.isNotEmpty())
 
     return result

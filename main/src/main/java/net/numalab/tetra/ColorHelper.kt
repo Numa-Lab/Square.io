@@ -45,4 +45,16 @@ class ColorHelper(val dye: DyeColor, val textColor: TextColor) {
     private constructor(team: Team) : this(team.color())
 
     fun equalByDyeColor(other: ColorHelper) = dye == other.dye
+
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (other !is ColorHelper) return false
+        return equalByDyeColor(other)
+    }
+
+    override fun hashCode(): Int {
+        var result = dye.hashCode()
+        result = 31 * result + textColor.hashCode()
+        return result
+    }
 }
