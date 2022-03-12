@@ -93,18 +93,46 @@ fun Pos.get8Relative(): PosSet {
 }
 
 fun fillInRange(all: PosSet, xRange: IntRange, zRange: IntRange, startFrom: Pos): PosSet {
-    val stack = mutableListOf(startFrom)
     val result = mutableListOf<Pos>()
+    for (z in zRange) {
+        for (x in xRange) {
+            val p = Pos(x, z)
+            if (p !in all) {
+                result.add(p)
+            } else {
+                break
+            }
+        }
 
-//    var counter = 0
-    do {
-        val current = stack.removeAt(0)
-        result.add(current)
-        val toAdd = current.get4Relative().filter { it.x in xRange && it.z in zRange && it !in all && it !in result }
-        stack.addAll(toAdd)
-//        counter++
-//        print(result, "result$counter")
-    } while (stack.isNotEmpty())
+        for (x in xRange.reversed()) {
+            val p = Pos(x, z)
+            if (p !in all) {
+                result.add(p)
+            } else {
+                break
+            }
+        }
+    }
+
+    for (x in xRange) {
+        for (z in zRange) {
+            val p = Pos(x, z)
+            if (p !in all) {
+                result.add(p)
+            } else {
+                break
+            }
+        }
+
+        for (z in zRange.reversed()) {
+            val p = Pos(x, z)
+            if (p !in all) {
+                result.add(p)
+            } else {
+                break
+            }
+        }
+    }
 
     return result
 }

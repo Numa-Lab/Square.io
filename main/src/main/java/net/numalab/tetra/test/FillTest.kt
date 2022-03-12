@@ -4,6 +4,7 @@ import net.numalab.tetra.geo.*
 
 fun main() {
     FillTest().test()
+//    FillTest().bench()
 }
 
 class FillTest {
@@ -50,5 +51,21 @@ class FillTest {
 
         val fill = fill(pos1, pos2)
         print(fill, "fill")
+    }
+
+    fun bench() {
+        val times = 10000
+
+        val pos1 = convertFromString(test1)
+        print(pos1, "pos1")
+        val pos2 = convertFromString(test2)
+        print(pos2, "pos2")
+        val start = System.nanoTime()
+        for (i in 0..times) {
+            fill(pos1, pos2)
+        }
+        val end = System.nanoTime()
+        println("time: ${(end - start) / 1000000.0}ms")
+        println("time per: ${(end - start) / (times * 1000000.0)}ms")
     }
 }
