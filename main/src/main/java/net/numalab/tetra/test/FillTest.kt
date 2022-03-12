@@ -31,38 +31,6 @@ class FillTest {
         "0000000000"
     )
 
-    private fun convertFromString(str: List<String>): PosSet {
-        return str.mapIndexed { z, string ->
-            string.mapIndexed { x, c ->
-                if (c == '1') {
-                    Pos(x, z)
-                } else {
-                    null
-                }
-            }
-        }.flatten().filterNotNull()
-    }
-
-    private fun convertFromPos(pos: PosSetNullable, width: Int, height: Int): List<String> {
-        var builder = StringBuilder()
-        val out = mutableListOf<String>()
-
-        for (z in 0 until height) {
-            for (x in 0 until width) {
-                if (pos.contains(Pos(x, z))) {
-                    builder.append("1")
-                } else {
-                    builder.append("0")
-                }
-            }
-
-            out.add(builder.toString())
-            builder = StringBuilder()
-        }
-
-        return out
-    }
-
     fun test() {
         val pos1 = convertFromString(test1)
         print(pos1, "pos1")
@@ -82,30 +50,5 @@ class FillTest {
 
         val fill = fill(pos1, pos2)
         print(fill, "fill")
-    }
-
-    private fun print(pos: PosSet, name: String) {
-        println("===== $name =====")
-        val converted = convertFromPos(pos, test1[0].length, test1.size)
-        converted.forEach {
-            println(it)
-        }
-    }
-
-    @JvmName("print1n")
-    private fun print(pos: PosSetNullable, name: String) {
-        println("===== $name =====")
-        val converted = convertFromPos(pos, test1[0].length, test1.size)
-        converted.forEach {
-            println(it)
-        }
-    }
-
-    @JvmName("print1")
-    private fun print(str: List<String>, name: String) {
-        println("===== $name =====")
-        str.forEach {
-            println(it)
-        }
     }
 }

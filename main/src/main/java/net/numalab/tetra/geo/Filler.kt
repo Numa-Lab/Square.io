@@ -55,6 +55,11 @@ fun PosSet.maxZ() = this.maxOf { it.z }
 fun PosSet.minX() = this.minOf { it.x }
 fun PosSet.minZ() = this.minOf { it.z }
 
+fun PosSetNullable.maxX() = this.filterNotNull().maxOfOrNull { it.x }
+fun PosSetNullable.maxZ() = this.filterNotNull().maxOfOrNull { it.z }
+fun PosSetNullable.minX() = this.filterNotNull().minOfOrNull { it.x }
+fun PosSetNullable.minZ() = this.filterNotNull().minOfOrNull { it.z }
+
 fun fill(one: PosSet, two: PosSet): PosSet {
     val all = one + two
     val xRange = (all.minX() - 1)..(all.maxX() + 1)
@@ -92,10 +97,14 @@ fun fillInRange(all: PosSet, xRange: IntRange, zRange: IntRange, startFrom: Pos)
     val stack = mutableListOf(startFrom)
     val result = mutableListOf<Pos>()
 
+    var counter = 0
     do {
         val current = stack.removeAt(0)
         result.add(current)
-        stack.addAll(current.get4Relative().filter { it.x in xRange && it.z in zRange && it !in all && it !in result })
+        val toAdd = current.get4Relative().filter { it.x in xRange && it.z in zRange && it !in all && it !in result }
+        stack.addAll(toAdd)
+        counter++
+        print(result, "result$counter")
     } while (stack.isNotEmpty())
 
     return result
@@ -111,5 +120,55 @@ fun flipInRange(outside: PosSet, xRange: IntRange, zRange: IntRange): PosSet {
             }
         }
     }
+    return out
+}
+
+fun print(pos: PosSet, name: String) {
+    println("===== $name =====")
+    val converted = convertFromPos(pos, pos.minX(), pos.minZ(), pos.maxX(), pos.maxZ())
+    converted.forEach {
+        println(it)
+    }
+}
+
+@JvmName("print1n")
+fun print(pos: PosSetNullable, name: String) {
+    println("===== $name =====")
+    val converted = convertFromPos(pos, pos.minX()!!, pos.minZ()!!, pos.maxX()!!, pos.maxZ()!!)
+    converted.forEach {
+        println(it)
+    }
+}
+
+fun convertFromString(str: List<String>): PosSet {
+    return str.mapIndexed { z, string ->
+        string.mapIndexed { x, c ->
+            if (c == '1') {
+                Pos(x, z)
+            } else {
+                null
+            }
+        }
+    }.flatten().filterNotNull()
+}
+
+fun convertFromPos(pos: PosSetNullable, startX: Int, startZ: Int, endX: Int, endZ: Int): List<String> {
+    var builder = StringBuilder()
+    val out = mutableListOf<String>()
+    out.add("StartPos: $startX, $startZ")
+
+    for (z in startZ..endZ) {
+        for (x in startX..endX) {
+            if (pos.contains(Pos(x, z))) {
+                builder.append("1")
+            } else {
+                builder.append("0")
+            }
+        }
+
+        out.add(builder.toString())
+        builder = StringBuilder()
+    }
+
     return out
 }
