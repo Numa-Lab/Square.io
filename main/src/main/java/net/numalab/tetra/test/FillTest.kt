@@ -3,8 +3,8 @@ package net.numalab.tetra.test
 import net.numalab.tetra.geo.*
 
 fun main() {
-    FillTest().test()
-//    FillTest().bench()
+//    FillTest().test()
+    FillTest().bench()
 }
 
 class FillTest {
@@ -41,12 +41,12 @@ class FillTest {
         val pos3 = pos1 + pos2
         print(pos3, "pos1 + pos2")
 
-        val xRange = (pos3.minX() - 1)..(pos3.maxX() + 1)
-        val zRange = (pos3.minZ() - 1)..(pos3.maxZ() + 1)
+        val xRange = (pos3.minX - 1)..(pos3.maxX + 1)
+        val zRange = (pos3.minZ - 1)..(pos3.maxZ + 1)
 
-        val outside = fillInRange(pos3, xRange, zRange, Pos(pos3.maxX() + 1, pos3.maxZ() + 1))
+        val outside = fillInRangeFromOutside(pos3, xRange, zRange)
         print(outside, "outside")
-        val inside = flipInRange(outside, pos3.minX()..pos3.maxX(), pos3.minZ()..pos3.maxZ())
+        val inside = flipInRange(outside, pos3.minX..pos3.maxX, pos3.minZ..pos3.maxZ)
         print(inside, "inside")
 
         val fill = fill(pos1, pos2)

@@ -1,6 +1,8 @@
 package net.numalab.tetra
 
-import net.numalab.tetra.geo.*
+import net.numalab.tetra.geo.MinecraftAdapter
+import net.numalab.tetra.geo.PosSet
+import net.numalab.tetra.geo.fill
 import org.bukkit.*
 import org.bukkit.entity.Player
 import java.util.*
@@ -73,7 +75,7 @@ class BlockManager(val config: TetraConfig, plugin: Tetra) {
     /**
      * プレイヤーごとの線
      */
-    private val playerLineMap = mutableMapOf<UUID, PosSet>()
+    private val playerLineMap = mutableMapOf<UUID, List<Pair<Int, Int>>>()
 
     private fun task() {
         if (config.isGoingOn.value()) {
@@ -104,30 +106,26 @@ class BlockManager(val config: TetraConfig, plugin: Tetra) {
         }
     }
 
-    private fun isLineValid(line: PosSet, teamColor: ColorHelper): Boolean {
-        val territory = territoryMap[teamColor] ?: return false
-        return line.all { territory.contains(it) }
-    }
-
-    private fun addTerritory(color: ColorHelper, pos: Pos) {
+    private fun addTerritory(color: ColorHelper, pos: Pair<Int, Int>) {
         if (territoryMap.containsKey(color)) {
-            territoryMap[color] = territoryMap[color]!! + pos
+            territoryMap[color] = territoryMap[color]!!.add(pos.first, pos.second, 1.toByte())
         } else {
-            territoryMap[color] = listOf(pos)
+            territoryMap[color] =
+                PosSet(pos.first, pos.second, pos.first, pos.second).also { it[pos.first, pos.second] = 1.toByte() }
         }
     }
 
-    private fun fillWith(color: ColorHelper, line: PosSet, y: Double, world: World) {
+    private fun fillWith(color: ColorHelper, line: List<Pair<Int, Int>>, y: Double, world: World) {
         val territory = territoryMap[color]
         if (territory != null) {
-            val t = territory.toMutableSet()
-            val toFill = fill(line, territory)
-            println("Filling ${toFill.size}blocks")
-            toFill.forEach {
-                setColoredWoolAt(MinecraftAdapter.toLocation(it, world, y), color)
+            val linePosSet = PosSet.of(line)
+            val toFill = fill(linePosSet, territory)
+            println("Filling blocks...")
+            val notZero = toFill.getNotZeros()
+            notZero.forEach {
+                setColoredWoolAt(MinecraftAdapter.toLocation(Pair(it.first, it.second), world, y), color)
             }
-            t.addAll(toFill)
-            territoryMap[color] = t.toList()
+            territoryMap[color] = territory + toFill
         } else {
             // 領地がないのに塗ろうとしてる
             // 多分通らない
@@ -138,7 +136,7 @@ class BlockManager(val config: TetraConfig, plugin: Tetra) {
         return playerLineMap.containsKey(player.uniqueId) && playerLineMap[player.uniqueId]!!.isNotEmpty()
     }
 
-    private fun addPlayerLineRecord(player: Player, pos: Pos) {
+    private fun addPlayerLineRecord(player: Player, pos: Pair<Int, Int>) {
         val uuid = player.uniqueId
         val line = playerLineMap[uuid]
         if (line == null) {
@@ -147,17 +145,6 @@ class BlockManager(val config: TetraConfig, plugin: Tetra) {
             if (line.last() != pos) {
                 playerLineMap[uuid] = line + pos
             }
-        }
-    }
-
-    @JvmName("fillAtN")
-    private fun fillAt(posn: PosSetNullable, color: ColorHelper, y: Double, world: World) {
-        fillAt(posn.filterNotNull(), color, y, world)
-    }
-
-    private fun fillAt(posset: PosSet, color: ColorHelper, y: Double, world: World) {
-        posset.forEach {
-            setColoredWoolAt(MinecraftAdapter.toLocation(it, world, y), color)
         }
     }
 }

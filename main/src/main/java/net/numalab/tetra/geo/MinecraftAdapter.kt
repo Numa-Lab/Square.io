@@ -5,12 +5,12 @@ import org.bukkit.World
 
 class MinecraftAdapter {
     companion object {
-        fun toPos(location: Location): Pos {
-            return Pos(location.blockX, location.blockZ)
+        fun toPos(location: Location): Pair<Int, Int> {
+            return Pair(location.blockX, location.blockZ)
         }
 
-        fun toLocation(pos: Pos, world: World, y: Double): Location {
-            return Location(world, pos.x.toDouble(), y, pos.z.toDouble())
+        fun toLocation(pos: Pair<Int, Int>, world: World, y: Double): Location {
+            return Location(world, pos.first.toDouble(), y, pos.second.toDouble())
         }
     }
 }
