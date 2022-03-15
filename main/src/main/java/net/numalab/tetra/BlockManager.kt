@@ -57,6 +57,7 @@ class BlockManager(private val config: TetraConfig, plugin: Tetra) {
     private val playerLineMap = mutableMapOf<UUID, List<Pair<Int, Int>>>()
 
     private val scoreBoardManager = ScoreBoardManager()
+    private val deathMessenger = DeathMessenger(plugin)
 
     private fun task() {
         if (config.isGoingOn.value()) {
@@ -70,19 +71,75 @@ class BlockManager(private val config: TetraConfig, plugin: Tetra) {
                     .filter { it.gameMode == GameMode.SURVIVAL }
                     .forEach {
                         val bottomLocation = it.location.block.getRelative(0, -1, 0).location
-                        if (bottomLocation.block.type.sameColoredWool(teamColor.dye)) {
-                            addTerritory(teamColor, MinecraftAdapter.toPos(bottomLocation))
-                            if (playerHasLine(it)) {
-                                // 線がある場合は塗りつぶしをする
-                                val line = playerLineMap[it.uniqueId]!!
-                                fillWith(teamColor, line, bottomLocation.blockY.toDouble(), bottomLocation.world)
-                                playerLineMap.remove(it.uniqueId)   // 線をリセット
+                        if (bottomLocation.block.type.isWool()) {
+                            if (bottomLocation.block.type.sameColoredWool(teamColor.dye)) {
+                                addTerritory(teamColor, MinecraftAdapter.toPos(bottomLocation))
+                                if (playerHasLine(it)) {
+                                    // 線がある場合は塗りつぶしをする
+                                    val line = playerLineMap[it.uniqueId]!!
+                                    fillWith(teamColor, line, bottomLocation.blockY.toDouble(), bottomLocation.world)
+                                    playerLineMap.remove(it.uniqueId)   // 線をリセット
+                                }
+                                // スコアボードを更新
+                                updateScoreBoard(team, teamColor)
+                            } else {
+                                // 線追加
+                                setColoredGlassAt(bottomLocation, teamColor)
+                                addPlayerLineRecord(it, MinecraftAdapter.toPos(bottomLocation))
                             }
-                            // スコアボードを更新
-                            updateScoreBoard(team, teamColor)
                         } else {
-                            setColoredGlassAt(bottomLocation, teamColor)
-                            addPlayerLineRecord(it, MinecraftAdapter.toPos(bottomLocation))
+                            if (bottomLocation.block.type.isGlass() && !bottomLocation.block.type.sameColoredGlass(
+                                    teamColor.dye
+                                )
+                            ) {
+                                // 他のチームの線に触れた
+                                // 死亡処理
+                                it.health = 0.0
+                                it.gameMode = GameMode.SPECTATOR
+                                // 引いてきた線を元に戻す
+                                playerLineMap[it.uniqueId]?.forEach { pair ->
+                                    val found = territoryMap.entries.firstOrNull { e -> e.value.contains(pair) }
+                                    if (found != null) {
+                                        // 羊毛に戻してあげる
+                                        setColoredWoolAt(
+                                            bottomLocation.add(
+                                                pair.first.toDouble(),
+                                                bottomLocation.blockY.toDouble(),
+                                                pair.second.toDouble()
+                                            ),
+                                            found.key.dye
+                                        )
+                                    } else {
+                                        // 何も無かったことにする
+                                        it.world.getBlockAt(pair.first, bottomLocation.blockY, pair.second).type =
+                                            Material.AIR
+                                    }
+                                }
+
+                                playerLineMap.remove(it.uniqueId)   // 線をリセット
+
+                                //キルログ処理
+                                val killerUUID = playerLineMap.filter { (_, line) ->
+                                    line.contains(
+                                        Pair(
+                                            bottomLocation.blockX,
+                                            bottomLocation.blockZ
+                                        )
+                                    )
+                                }.keys.firstOrNull()
+
+                                val killer = if (killerUUID != null) Bukkit.getPlayer(killerUUID) else null
+                                deathMessenger.addQueue(
+                                    it,
+                                    killer,
+                                    team.entries.mapNotNull { e -> Bukkit.getPlayer(e) }
+                                        .none { t -> t.gameMode == GameMode.SURVIVAL && t != it }
+                                )
+                            } else {
+                                // 線追加
+                                setColoredGlassAt(bottomLocation, teamColor)
+                                addPlayerLineRecord(it, MinecraftAdapter.toPos(bottomLocation))
+                            }
                         }
                     }
             }
