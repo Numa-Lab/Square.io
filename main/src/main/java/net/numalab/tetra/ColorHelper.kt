@@ -10,15 +10,28 @@ import org.bukkit.scoreboard.Team
  */
 class ColorHelper(val dye: DyeColor, val textColor: TextColor) {
     companion object {
-        // TODO 手動で全種類マッピングする
-        private val mapping = DyeColor.values()
-            .associateBy { NamedTextColor.nearestTo(TextColor.color(it.color.red, it.color.green, it.color.blue)) }
-            .also {
-                if (it.keys.size != it.keys.distinct().size) {
-                    // 同じ色がある
-                    throw IllegalStateException("Failed to Auto Generate Color Mapping")
-                }
-            }
+        // ここにある色以外はサポートしない
+        private val mapping = mapOf<NamedTextColor, DyeColor>(
+            NamedTextColor.RED to DyeColor.RED,
+            NamedTextColor.GREEN to DyeColor.GREEN,
+            NamedTextColor.BLUE to DyeColor.BLUE,
+            NamedTextColor.YELLOW to DyeColor.YELLOW,
+            NamedTextColor.WHITE to DyeColor.WHITE,
+            NamedTextColor.GRAY to DyeColor.GRAY,
+//            NamedTextColor.LIGHT_GRAY to DyeColor.LIGHT_GRAY,
+            NamedTextColor.BLACK to DyeColor.BLACK,
+//            NamedTextColor.PINK to DyeColor.PINK,
+//            NamedTextColor.ORANGE to DyeColor.ORANGE,
+//            NamedTextColor.MAGENTA to DyeColor.MAGENTA,
+//            NamedTextColor.LIME to DyeColor.LIME,
+//            NamedTextColor.CYAN to DyeColor.CYAN,
+//            NamedTextColor.PURPLE to DyeColor.PURPLE,
+//            NamedTextColor.BROWN to DyeColor.BROWN,
+//            NamedTextColor.LIGHT_BLUE to DyeColor.LIGHT_BLUE,
+//            NamedTextColor.GOLD to DyeColor.GOLD,
+//            NamedTextColor.LIGHT_GRAY to DyeColor.LIGHT_GRAY,
+//            NamedTextColor.DARK_GRAY to DyeColor.DARK_GRAY,
+        )
 
         /**
          * 一部の色がかけているので。

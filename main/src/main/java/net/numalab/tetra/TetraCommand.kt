@@ -9,7 +9,7 @@ import org.bukkit.Bukkit
 import org.bukkit.command.CommandException
 import org.bukkit.scoreboard.Team
 
-class TetraCommand(config: TetraConfig) : Command("tetra") {
+class TetraCommand(val config: TetraConfig) : Command("tetra") {
     init {
         description("Tetra command")
         permission(Permission.OP)
@@ -23,8 +23,14 @@ class TetraCommand(config: TetraConfig) : Command("tetra") {
                         } catch (e: CommandException) {
                             fail("コンフィグファイルの変更に失敗しました")
                         }
-                        config.isGoingOn.value(true)
-                        success("ONになりました")
+
+                        val failed = checkAllTeamColor()
+                        if (failed.isNotEmpty()) {
+                            fail("以下のチームの色は使用できません\n${failed.joinToString("\n") { it.name }}")
+                        } else {
+                            this@TetraCommand.config.isGoingOn.value(true)
+                            success("ONになりました")
+                        }
                     }
                     "OFF" -> {
                         try {
@@ -32,7 +38,7 @@ class TetraCommand(config: TetraConfig) : Command("tetra") {
                         } catch (e: CommandException) {
                             fail("コンフィグファイルの変更に失敗しました")
                         }
-                        config.isGoingOn.value(false)
+                        this@TetraCommand.config.isGoingOn.value(false)
                         success("OFFになりました")
                     }
                     else -> {
@@ -43,6 +49,10 @@ class TetraCommand(config: TetraConfig) : Command("tetra") {
         }
 
         children(TetraTeamCommand(config), ConfigCommandBuilder(config).build())
+    }
+
+    private fun checkAllTeamColor(): List<Team> = config.getJoinedTeams().filter {
+        ColorHelper.getBy(it) == null
     }
 }
 

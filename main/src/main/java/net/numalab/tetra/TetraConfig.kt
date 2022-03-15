@@ -10,7 +10,7 @@ import org.bukkit.scoreboard.Team
 class TetraConfig(plugin: Plugin) : BaseConfig(plugin) {
     private val joinedTeams = StringListValue(listOf())
     fun getJoinedTeams(): List<Team> {
-        return joinedTeams.value().mapNotNull { Bukkit.getScoreboardManager().mainScoreboard.getTeam(it) }
+        return joinedTeams.value().mapNotNull { Bukkit.getScoreboardManager().mainScoreboard.getTeam(it) }.distinct()
     }
 
     fun setJoinedTeams(teams: List<Team>) {

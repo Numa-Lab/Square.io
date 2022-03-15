@@ -15,45 +15,11 @@ import java.util.function.BiFunction
 class BlockManager(private val config: TetraConfig, plugin: Tetra) {
     companion object {
         private fun setColoredWoolAt(location: Location, color: DyeColor) {
-            location.block.type = when (color) {
-                DyeColor.WHITE -> Material.WHITE_WOOL
-                DyeColor.ORANGE -> Material.ORANGE_WOOL
-                DyeColor.MAGENTA -> Material.MAGENTA_WOOL
-                DyeColor.LIGHT_BLUE -> Material.LIGHT_BLUE_WOOL
-                DyeColor.YELLOW -> Material.YELLOW_WOOL
-                DyeColor.LIME -> Material.LIME_WOOL
-                DyeColor.PINK -> Material.PINK_WOOL
-                DyeColor.GRAY -> Material.GRAY_WOOL
-                DyeColor.LIGHT_GRAY -> Material.LIGHT_GRAY_WOOL
-                DyeColor.CYAN -> Material.CYAN_WOOL
-                DyeColor.PURPLE -> Material.PURPLE_WOOL
-                DyeColor.BLUE -> Material.BLUE_WOOL
-                DyeColor.BROWN -> Material.BROWN_WOOL
-                DyeColor.GREEN -> Material.GREEN_WOOL
-                DyeColor.RED -> Material.RED_WOOL
-                DyeColor.BLACK -> Material.BLACK_WOOL
-            }
+            location.block.type = wools[color]!!
         }
 
         private fun setColoredGlassAt(location: Location, dyeColor: DyeColor) {
-            location.block.type = when (dyeColor) {
-                DyeColor.WHITE -> Material.WHITE_STAINED_GLASS
-                DyeColor.ORANGE -> Material.ORANGE_STAINED_GLASS
-                DyeColor.MAGENTA -> Material.MAGENTA_STAINED_GLASS
-                DyeColor.LIGHT_BLUE -> Material.LIGHT_BLUE_STAINED_GLASS
-                DyeColor.YELLOW -> Material.YELLOW_STAINED_GLASS
-                DyeColor.LIME -> Material.LIME_STAINED_GLASS
-                DyeColor.PINK -> Material.PINK_STAINED_GLASS
-                DyeColor.GRAY -> Material.GRAY_STAINED_GLASS
-                DyeColor.LIGHT_GRAY -> Material.LIGHT_GRAY_STAINED_GLASS
-                DyeColor.CYAN -> Material.CYAN_STAINED_GLASS
-                DyeColor.PURPLE -> Material.PURPLE_STAINED_GLASS
-                DyeColor.BLUE -> Material.BLUE_STAINED_GLASS
-                DyeColor.BROWN -> Material.BROWN_STAINED_GLASS
-                DyeColor.GREEN -> Material.GREEN_STAINED_GLASS
-                DyeColor.RED -> Material.RED_STAINED_GLASS
-                DyeColor.BLACK -> Material.BLACK_STAINED_GLASS
-            }
+            location.block.type = glasses[dyeColor]!!
         }
 
         fun setColoredWoolAt(location: Location, color: ColorHelper) {
@@ -104,7 +70,7 @@ class BlockManager(private val config: TetraConfig, plugin: Tetra) {
                     .filter { it.gameMode == GameMode.SURVIVAL }
                     .forEach {
                         val bottomLocation = it.location.block.getRelative(0, -1, 0).location
-                        if (bottomLocation.block.type.isWool()) {
+                        if (bottomLocation.block.type.sameColoredWool(teamColor.dye)) {
                             addTerritory(teamColor, MinecraftAdapter.toPos(bottomLocation))
                             if (playerHasLine(it)) {
                                 // 線がある場合は塗りつぶしをする
