@@ -5,12 +5,14 @@ import net.numalab.tetra.geo.PosSet
 import net.numalab.tetra.geo.fill
 import org.bukkit.*
 import org.bukkit.entity.Player
+import org.bukkit.scoreboard.Team
 import java.util.*
+import java.util.function.BiFunction
 
 /**
  * チームごとに羊毛、色付きガラスの準備をして地面に設置するクラス
  */
-class BlockManager(val config: TetraConfig, plugin: Tetra) {
+class BlockManager(private val config: TetraConfig, plugin: Tetra) {
     companion object {
         private fun setColoredWoolAt(location: Location, color: DyeColor) {
             location.block.type = when (color) {
@@ -65,6 +67,17 @@ class BlockManager(val config: TetraConfig, plugin: Tetra) {
 
     init {
         plugin.server.scheduler.runTaskTimer(plugin, Runnable { task() }, 1, 1)
+
+        config.isGoingOn.onModify(BiFunction { bool, _ ->
+            if (!bool) {
+                // すべてリセット
+                territoryMap.clear()
+                playerLineMap.clear()
+                scoreBoardManager.reset()
+            }
+
+            return@BiFunction false
+        })
     }
 
     /**
@@ -76,6 +89,8 @@ class BlockManager(val config: TetraConfig, plugin: Tetra) {
      * プレイヤーごとの線
      */
     private val playerLineMap = mutableMapOf<UUID, List<Pair<Int, Int>>>()
+
+    private val scoreBoardManager = ScoreBoardManager()
 
     private fun task() {
         if (config.isGoingOn.value()) {
@@ -97,12 +112,23 @@ class BlockManager(val config: TetraConfig, plugin: Tetra) {
                                 fillWith(teamColor, line, bottomLocation.blockY.toDouble(), bottomLocation.world)
                                 playerLineMap.remove(it.uniqueId)   // 線をリセット
                             }
+                            // スコアボードを更新
+                            updateScoreBoard(team, teamColor)
                         } else {
                             setColoredGlassAt(bottomLocation, teamColor)
                             addPlayerLineRecord(it, MinecraftAdapter.toPos(bottomLocation))
                         }
                     }
             }
+        }
+    }
+
+    private fun updateScoreBoard(team: Team, teamColor: ColorHelper) {
+        val en = territoryMap[teamColor]
+        if (en == null) {
+            scoreBoardManager.updateScoreBoard(team, -1)
+        } else {
+            scoreBoardManager.updateScoreBoard(team, en.getNotZeros().size)
         }
     }
 

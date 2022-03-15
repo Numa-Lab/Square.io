@@ -6,6 +6,7 @@ import net.kunmc.lab.configlib.ConfigCommandBuilder
 import net.kyori.adventure.text.format.NamedTextColor
 import net.kyori.adventure.text.format.TextColor
 import org.bukkit.Bukkit
+import org.bukkit.command.CommandException
 import org.bukkit.scoreboard.Team
 
 class TetraCommand(config: TetraConfig) : Command("tetra") {
@@ -17,10 +18,20 @@ class TetraCommand(config: TetraConfig) : Command("tetra") {
             executes {
                 when (typedArgs[0] as String) {
                     "ON" -> {
+                        try {
+                            Bukkit.dispatchCommand(sender, "tetra config modify isGoingOn set true")
+                        } catch (e: CommandException) {
+                            fail("コンフィグファイルの変更に失敗しました")
+                        }
                         config.isGoingOn.value(true)
                         success("ONになりました")
                     }
                     "OFF" -> {
+                        try {
+                            Bukkit.dispatchCommand(sender, "tetra config modify isGoingOn set false")
+                        } catch (e: CommandException) {
+                            fail("コンフィグファイルの変更に失敗しました")
+                        }
                         config.isGoingOn.value(false)
                         success("OFFになりました")
                     }
