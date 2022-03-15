@@ -93,6 +93,29 @@ class BlockManager(private val config: TetraConfig, plugin: Tetra) {
                                 )
                             ) {
                                 // 他のチームの線に触れた
+                                //キルログ処理
+                                val killerUUID = playerLineMap.filter { (_, line) ->
+                                    line.contains(
+                                        Pair(
+                                            bottomLocation.blockX,
+                                            bottomLocation.blockZ
+                                        )
+                                    )
+                                }.keys.firstOrNull()
+
+                                val killer = if (killerUUID != null) Bukkit.getPlayer(killerUUID) else null
+                                val isFinal = team.entries.mapNotNull { e -> Bukkit.getPlayer(e) }
+                                    .none { t -> t.gameMode == GameMode.SURVIVAL && t != it }
+                                if (isFinal) {
+                                    deathMessenger.onTeamDeath(team, getScore(teamColor))
+                                }
+
+                                deathMessenger.addDeadQueue(
+                                    it,
+                                    killer,
+                                    isFinal
+                                )
+
                                 // 死亡処理
                                 it.health = 0.0
                                 it.gameMode = GameMode.SPECTATOR
@@ -117,24 +140,6 @@ class BlockManager(private val config: TetraConfig, plugin: Tetra) {
                                 }
 
                                 playerLineMap.remove(it.uniqueId)   // 線をリセット
-
-                                //キルログ処理
-                                val killerUUID = playerLineMap.filter { (_, line) ->
-                                    line.contains(
-                                        Pair(
-                                            bottomLocation.blockX,
-                                            bottomLocation.blockZ
-                                        )
-                                    )
-                                }.keys.firstOrNull()
-
-                                val killer = if (killerUUID != null) Bukkit.getPlayer(killerUUID) else null
-                                deathMessenger.addQueue(
-                                    it,
-                                    killer,
-                                    team.entries.mapNotNull { e -> Bukkit.getPlayer(e) }
-                                        .none { t -> t.gameMode == GameMode.SURVIVAL && t != it }
-                                )
                             } else {
                                 // 線追加
                                 setColoredGlassAt(bottomLocation, teamColor)
@@ -146,13 +151,12 @@ class BlockManager(private val config: TetraConfig, plugin: Tetra) {
         }
     }
 
+    private fun getScore(teamColor: ColorHelper): Int {
+        return territoryMap[teamColor]?.getNotZeros()?.size ?: -1
+    }
+
     private fun updateScoreBoard(team: Team, teamColor: ColorHelper) {
-        val en = territoryMap[teamColor]
-        if (en == null) {
-            scoreBoardManager.updateScoreBoard(team, -1)
-        } else {
-            scoreBoardManager.updateScoreBoard(team, en.getNotZeros().size)
-        }
+        scoreBoardManager.updateScoreBoard(team, getScore(teamColor))
     }
 
     private fun addTerritory(color: ColorHelper, pos: Pair<Int, Int>) {
