@@ -20,6 +20,7 @@ class Tetra : JavaPlugin() {
         BlockManager(config, this)
         BlockBreakPrevent(this, config)
         JumpPrevent(this, config)
+        ForceMover(this, config)
     }
 
     override fun onDisable() {
