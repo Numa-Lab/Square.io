@@ -57,7 +57,7 @@ class BlockManager(private val config: TetraConfig, plugin: Tetra) {
     private val playerLineMap = mutableMapOf<UUID, List<Pair<Int, Int>>>()
 
     private val scoreBoardManager = ScoreBoardManager()
-    private val deathMessenger = DeathMessenger(plugin)
+    private val deathMessenger = DeathMessenger(plugin, config)
 
     private fun task() {
         if (config.isGoingOn.value()) {
@@ -104,21 +104,30 @@ class BlockManager(private val config: TetraConfig, plugin: Tetra) {
                                 }.keys.firstOrNull()
 
                                 val killer = if (killerUUID != null) Bukkit.getPlayer(killerUUID) else null
-                                val isFinal = team.entries.mapNotNull { e -> Bukkit.getPlayer(e) }
+                                val isFinalKill = team.entries.mapNotNull { e -> Bukkit.getPlayer(e) }
                                     .none { t -> t.gameMode == GameMode.SURVIVAL && t != it }
-                                if (isFinal) {
-                                    deathMessenger.onTeamDeath(team, getScore(teamColor))
-                                }
 
                                 deathMessenger.addDeadQueue(
                                     it,
                                     killer,
-                                    isFinal
+                                    isFinalKill
                                 )
 
                                 // 死亡処理
                                 it.health = 0.0
                                 it.gameMode = GameMode.SPECTATOR
+
+                                // チーム死亡判定・ゲーム終了判定
+                                if (isFinalKill) {
+                                    val lastTeam = deathMessenger.onTeamDeath(team, getScore(teamColor))
+                                    if (lastTeam != null) {
+                                        deathMessenger.broadCastResult(
+                                            lastTeam to getScore(ColorHelper.getBy(lastTeam)),
+                                            config.getJoinedTeams().filter { f -> f != lastTeam }
+                                                .map { t -> t to getScore(ColorHelper.getBy(t)) })
+                                    }
+                                }
+
                                 // 引いてきた線を元に戻す
                                 playerLineMap[it.uniqueId]?.forEach { pair ->
                                     val found = territoryMap.entries.firstOrNull { e -> e.value.contains(pair) }
@@ -151,7 +160,8 @@ class BlockManager(private val config: TetraConfig, plugin: Tetra) {
         }
     }
 
-    private fun getScore(teamColor: ColorHelper): Int {
+    private fun getScore(teamColor: ColorHelper?): Int {
+        if (teamColor == null) return -1
         return territoryMap[teamColor]?.getNotZeros()?.size ?: -1
     }
 

@@ -28,8 +28,15 @@ class TetraCommand(val config: TetraConfig) : Command("tetra") {
                         if (failed.isNotEmpty()) {
                             fail("以下のチームの色は使用できません\n${failed.joinToString("\n") { it.name }}")
                         } else {
-                            this@TetraCommand.config.isGoingOn.value(true)
-                            success("ONになりました")
+                            if (this@TetraCommand.config.getJoinedTeams()
+                                    .filter { it.entries.mapNotNull { e -> Bukkit.getPlayer(e) }.isNotEmpty() }
+                                    .size >= 2
+                            ) {
+                                this@TetraCommand.config.isGoingOn.value(true)
+                                success("ONになりました")
+                            } else {
+                                fail("少なくとも2つ以上のチームを追加してください")
+                            }
                         }
                     }
                     "OFF" -> {
