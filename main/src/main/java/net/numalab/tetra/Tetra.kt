@@ -18,6 +18,8 @@ class Tetra : JavaPlugin() {
     override fun onEnable() {
         // Plugin startup logic
         BlockManager(config, this)
+        BlockBreakPrevent(this, config)
+        JumpPrevent(this, config)
     }
 
     override fun onDisable() {
