@@ -40,7 +40,13 @@ class ColorHelper(val dye: DyeColor, val textColor: TextColor) {
             return mapping[textColor]?.let { ColorHelper(it, textColor) }
         }
 
-        fun getBy(team: Team) = getBy(team.color())
+        fun getBy(team: Team): ColorHelper? {
+            return try {
+                getBy(team.color())
+            } catch (e: IllegalStateException) {
+                null
+            }
+        }
 
         fun random(): ColorHelper {
             val rk = mapping.keys.random()

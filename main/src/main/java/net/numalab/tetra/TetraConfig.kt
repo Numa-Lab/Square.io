@@ -4,6 +4,8 @@ import net.kunmc.lab.configlib.BaseConfig
 import net.kunmc.lab.configlib.value.BooleanValue
 import net.kunmc.lab.configlib.value.collection.StringListValue
 import org.bukkit.Bukkit
+import org.bukkit.GameMode
+import org.bukkit.entity.Player
 import org.bukkit.plugin.Plugin
 import org.bukkit.scoreboard.Team
 
@@ -13,17 +15,26 @@ class TetraConfig(plugin: Plugin) : BaseConfig(plugin) {
         return joinedTeams.value().mapNotNull { Bukkit.getScoreboardManager().mainScoreboard.getTeam(it) }.distinct()
     }
 
-    fun setJoinedTeams(teams: List<Team>) {
-        joinedTeams.value(teams.map { it.name })
+    fun getJoinedPlayer(containNotSurvival: Boolean): List<Player> {
+        return if (containNotSurvival) {
+            getJoinedTeams().map { it.entries }.flatten().mapNotNull { Bukkit.getPlayer(it) }
+        } else {
+            getJoinedTeams().map { it.entries }.flatten().mapNotNull { Bukkit.getPlayer(it) }
+                .filter { it.gameMode == GameMode.SURVIVAL }
+        }
+    }
+
+    fun clearJoinedTeam() {
+        joinedTeams.clear()
     }
 
     fun addJoinedTeam(team: Team) {
-        val added = joinedTeams.value().also { it.add(team.name) }
+        val added = (joinedTeams.value() + team.name).distinct()
         joinedTeams.value(added)
     }
 
     fun removeJoinedTeam(team: Team) {
-        val removed = joinedTeams.value().also { it.remove(team.name) }
+        val removed = joinedTeams.value() - team.name
         joinedTeams.value(removed)
     }
 

@@ -123,8 +123,13 @@ class BlockManager(private val config: TetraConfig, plugin: Tetra) {
                                     if (lastTeam != null) {
                                         deathMessenger.broadCastResult(
                                             lastTeam to getScore(ColorHelper.getBy(lastTeam)),
-                                            config.getJoinedTeams().filter { f -> f != lastTeam }
-                                                .map { t -> t to getScore(ColorHelper.getBy(t)) })
+                                            (config.getJoinedTeams() - lastTeam).map { t ->
+                                                t to getScore(
+                                                    ColorHelper.getBy(
+                                                        t
+                                                    )
+                                                )
+                                            })
                                     }
                                 }
 

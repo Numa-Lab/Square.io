@@ -89,11 +89,11 @@ class TetraTeamCommand(private val config: TetraConfig) : Command("team") {
                             }
                         }
                         "removeTeam" -> {
-                            this@TetraTeamCommand.config.addJoinedTeam(team)
+                            this@TetraTeamCommand.config.removeJoinedTeam(team)
                             success("${displayTeam(team)} というチームを削除しました")
                         }
                         "clear" -> {
-                            this@TetraTeamCommand.config.addJoinedTeam(team)
+                            this@TetraTeamCommand.config.clearJoinedTeam()
                             success("チームを全て削除しました")
                         }
                     }

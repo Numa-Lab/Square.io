@@ -1,6 +1,5 @@
 package net.numalab.tetra
 
-import org.bukkit.Bukkit
 import org.bukkit.GameMode
 import org.bukkit.entity.Player
 import org.bukkit.plugin.java.JavaPlugin
@@ -12,8 +11,7 @@ class ForceMover(plugin: JavaPlugin, val config: TetraConfig) {
 
     private fun onTick() {
         if (!config.isGoingOn.value()) return
-        val players =
-            config.getJoinedTeams().mapNotNull { it.entries.mapNotNull { e -> Bukkit.getPlayer(e) } }.flatten()
+        val players = config.getJoinedPlayer(false)
         players.filter { it.gameMode == GameMode.SURVIVAL && it.isValid }.forEach {
             setVelocity(it)
         }
