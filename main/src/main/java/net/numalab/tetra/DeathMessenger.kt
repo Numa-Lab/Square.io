@@ -65,7 +65,11 @@ class DeathMessenger(plugin: JavaPlugin, private val config: TetraConfig) : List
      * @return 最後のチーム、まだ最後じゃない場合はnull
      */
     fun onTeamDeath(team: Team, score: Int): Team? {
-        Bukkit.broadcast(Component.text("${team.name}は${score}ブロック塗りつぶして滅んだ"))
+        Bukkit.broadcast(
+            Component.text("${team.name}は${score}ブロック塗りつぶして滅んだ")
+                .append(Component.space())
+                .append(Component.text("チームキル!").color(NamedTextColor.AQUA).decorate(TextDecoration.BOLD))
+        )
         return checkGameEnd()
     }
 

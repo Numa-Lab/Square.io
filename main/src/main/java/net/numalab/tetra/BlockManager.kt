@@ -188,7 +188,6 @@ class BlockManager(private val config: TetraConfig, plugin: Tetra) {
         if (territory != null) {
             val linePosSet = PosSet.of(line)
             val toFill = fill(linePosSet, territory)
-            println("Filling blocks...")
             val notZero = toFill.getNotZeros()
             notZero.forEach {
                 setColoredWoolAt(MinecraftAdapter.toLocation(Pair(it.first, it.second), world, y), color)
