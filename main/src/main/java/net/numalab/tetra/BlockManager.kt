@@ -94,7 +94,7 @@ class BlockManager(private val config: TetraConfig, plugin: Tetra) {
                             ) {
                                 // 他のチームの線に触れた
                                 //キルログ処理
-                                val killerUUID = playerLineMap.filter { (_, line) ->
+                                val toKillUUID = playerLineMap.filter { (_, line) ->
                                     line.contains(
                                         Pair(
                                             bottomLocation.blockX,
@@ -103,77 +103,82 @@ class BlockManager(private val config: TetraConfig, plugin: Tetra) {
                                     )
                                 }.keys.firstOrNull()
 
-                                val killer = if (killerUUID != null) Bukkit.getPlayer(killerUUID) else null
-                                val isFinalKill = team.entries.mapNotNull { e -> Bukkit.getPlayer(e) }
-                                    .none { t -> t.gameMode == GameMode.SURVIVAL && t != it }
+                                val toKill = if (toKillUUID != null) Bukkit.getPlayer(toKillUUID) else null
+                                if (toKill != null) {
+                                    val toKillName = toKill.name
+                                    val toKillTeam =
+                                        config.getJoinedTeams().find { t -> t.entries.contains(toKillName) }
+                                    if (toKillTeam != null) {
+                                        val isFinalKill =
+                                            (toKillTeam.entries.filter { e ->
+                                                val p =
+                                                    Bukkit.getPlayer(e); p != null && p.gameMode == GameMode.SURVIVAL
+                                            } - toKillName).isNotEmpty()
 
-                                deathMessenger.addDeadQueue(
-                                    it,
-                                    killer,
-                                    isFinalKill
-                                )
+                                        deathMessenger.addDeadQueue(toKill, it, isFinalKill)
+                                        toKill.health = 0.0
+                                        toKill.gameMode = GameMode.SPECTATOR
 
-                                // 死亡処理
-                                it.health = 0.0
-                                it.gameMode = GameMode.SPECTATOR
+// チーム死亡判定・ゲーム終了判定
+                                        if (isFinalKill) {
+                                            val lastTeam = deathMessenger.onTeamDeath(
+                                                toKillTeam,
+                                                getScore(ColorHelper.getBy(toKillTeam))
+                                            )
+                                            if (lastTeam.first) {
+                                                // ゲーム終了
+                                                val winner = lastTeam.second
+                                                if (winner != null) {
+                                                    deathMessenger.broadCastResult(
+                                                        winner to getScore(ColorHelper.getBy(winner)),
+                                                        (config.getJoinedTeams() - winner).map { t ->
+                                                            t to getScore(
+                                                                ColorHelper.getBy(
+                                                                    t
+                                                                )
+                                                            )
+                                                        })
+                                                } else {
+                                                    // 勝者がいない
+                                                    deathMessenger.broadCastResult(
+                                                        null,
+                                                        (config.getJoinedTeams()).map { t ->
+                                                            t to getScore(
+                                                                ColorHelper.getBy(
+                                                                    t
+                                                                )
+                                                            )
+                                                        })
+                                                }
 
-                                // チーム死亡判定・ゲーム終了判定
-                                if (isFinalKill) {
-                                    val lastTeam = deathMessenger.onTeamDeath(team, getScore(teamColor))
-                                    if (lastTeam.first) {
-                                        // ゲーム終了
-                                        val winner = lastTeam.second
-                                        if (winner != null) {
-                                            deathMessenger.broadCastResult(
-                                                winner to getScore(ColorHelper.getBy(winner)),
-                                                (config.getJoinedTeams() - winner).map { t ->
-                                                    t to getScore(
-                                                        ColorHelper.getBy(
-                                                            t
-                                                        )
-                                                    )
-                                                })
+                                                if (config.isAutoOff.value()) {
+                                                    // 自動的に終了
+                                                    config.isGoingOn.value(false)
+                                                }
+                                            }
+                                        }
+                                    }
+                                    // 引いてきた線を元に戻す
+                                    playerLineMap[toKill.uniqueId]?.forEach { pair ->
+                                        val found = territoryMap.entries.firstOrNull { e -> e.value.contains(pair) }
+                                        if (found != null) {
+                                            // 羊毛に戻してあげる
+                                            setColoredWoolAt(
+                                                bottomLocation.add(
+                                                    pair.first.toDouble(),
+                                                    bottomLocation.blockY.toDouble(),
+                                                    pair.second.toDouble()
+                                                ),
+                                                found.key.dye
+                                            )
                                         } else {
-                                            // 勝者がいない
-                                            deathMessenger.broadCastResult(
-                                                null,
-                                                (config.getJoinedTeams()).map { t ->
-                                                    t to getScore(
-                                                        ColorHelper.getBy(
-                                                            t
-                                                        )
-                                                    )
-                                                })
-                                        }
-
-                                        if (config.isAutoOff.value()) {
-                                            // 自動的に終了
-                                            config.isGoingOn.value(false)
+                                            // 何も無かったことにする
+                                            it.world.getBlockAt(pair.first, bottomLocation.blockY, pair.second).type =
+                                                Material.AIR
                                         }
                                     }
+                                    playerLineMap.remove(toKill.uniqueId)   // 線をリセット
                                 }
-
-                                // 引いてきた線を元に戻す
-                                playerLineMap[it.uniqueId]?.forEach { pair ->
-                                    val found = territoryMap.entries.firstOrNull { e -> e.value.contains(pair) }
-                                    if (found != null) {
-                                        // 羊毛に戻してあげる
-                                        setColoredWoolAt(
-                                            bottomLocation.add(
-                                                pair.first.toDouble(),
-                                                bottomLocation.blockY.toDouble(),
-                                                pair.second.toDouble()
-                                            ),
-                                            found.key.dye
-                                        )
-                                    } else {
-                                        // 何も無かったことにする
-                                        it.world.getBlockAt(pair.first, bottomLocation.blockY, pair.second).type =
-                                            Material.AIR
-                                    }
-                                }
-
-                                playerLineMap.remove(it.uniqueId)   // 線をリセット
                             } else {
                                 // 線追加
                                 setColoredGlassAt(bottomLocation, teamColor)

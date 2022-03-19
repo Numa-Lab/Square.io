@@ -92,14 +92,15 @@ class DeathMessenger(plugin: JavaPlugin, private val config: TetraConfig) : List
     fun broadCastResult(remainedTeam: Pair<Team, Int>?, teams: List<Pair<Team, Int>>) {
         Bukkit.broadcast(Component.text("=====ランキング====="))
         Bukkit.broadcast(Component.empty())
-        (teams + remainedTeam).filterNotNull().sortedBy { it.second }.forEachIndexed { index, pair ->
-            Bukkit.broadcast(
-                Component.text("[${index + 1}位]")
-                    .append(Component.space())
-                    .append(pair.first.displayName())
-                    .append(Component.text("は${pair.second}ブロック塗りつぶして滅んだ"))
-            )
-        }
+        (teams + remainedTeam).filterNotNull().filter { it.second != -1 }.sortedBy { it.second }
+            .forEachIndexed { index, pair ->
+                Bukkit.broadcast(
+                    Component.text("[${index + 1}位]")
+                        .append(Component.space())
+                        .append(pair.first.displayName())
+                        .append(Component.text("は${pair.second}ブロック塗りつぶして滅んだ"))
+                )
+            }
         if (remainedTeam != null) {
             Bukkit.broadcast(Component.empty())
             Bukkit.broadcast(Component.text("生き残りのチーム"))

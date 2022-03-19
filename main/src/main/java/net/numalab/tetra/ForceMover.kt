@@ -37,7 +37,7 @@ class ForceMover(plugin: JavaPlugin, val config: TetraConfig) : Listener {
     @EventHandler
     fun onMove(e: PlayerMoveEvent) {
         if (e.from.blockY != e.to.blockY) {
-            if (config.getJoinedPlayer(false).contains(e.player)) {
+            if (config.isGoingOn.value() && config.getJoinedPlayer(false).contains(e.player)) {
                 e.to = e.to.clone().also { it.y = e.from.blockY.toDouble() }    // ラグで高さが変わらないように
             }
         }
@@ -45,7 +45,7 @@ class ForceMover(plugin: JavaPlugin, val config: TetraConfig) : Listener {
 
     @EventHandler
     fun onSprint(e: PlayerToggleSprintEvent) {
-        if (config.getJoinedPlayer(false).contains(e.player)) {
+        if (config.isGoingOn.value() && config.getJoinedPlayer(false).contains(e.player)) {
             e.isCancelled = true    // スピードを変更しないように
         }
     }
