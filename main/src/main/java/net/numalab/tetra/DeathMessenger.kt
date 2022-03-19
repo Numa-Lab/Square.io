@@ -64,7 +64,7 @@ class DeathMessenger(plugin: JavaPlugin, private val config: TetraConfig) : List
     /**
      * @return 最後のチーム、まだ最後じゃない場合はnull
      */
-    fun onTeamDeath(team: Team, score: Int): Team? {
+    fun onTeamDeath(team: Team, score: Int): Pair<Boolean, Team?> {
         Bukkit.broadcast(
             Component.text("${team.name}は${score}ブロック塗りつぶして滅んだ")
                 .append(Component.space())
@@ -73,7 +73,7 @@ class DeathMessenger(plugin: JavaPlugin, private val config: TetraConfig) : List
         return checkGameEnd()
     }
 
-    private fun checkGameEnd(): Team? {
+    private fun checkGameEnd(): Pair<Boolean, Team?> {
         val notEndTeam = config.getJoinedTeams()
             .filterNot {
                 it.entries.mapNotNull { e -> Bukkit.getPlayer(e) }
@@ -81,18 +81,18 @@ class DeathMessenger(plugin: JavaPlugin, private val config: TetraConfig) : List
                         || it.entries.isEmpty()
             }
         if (notEndTeam.size == 1) {
-            return notEndTeam.first()
+            return true to notEndTeam.first()
         } else if (notEndTeam.isEmpty()) {
             // なぜか勝者がいない
-            // TODO 処理
+            return true to null
         }
-        return null
+        return false to null
     }
 
-    fun broadCastResult(remainedTeam: Pair<Team, Int>, teams: List<Pair<Team, Int>>) {
+    fun broadCastResult(remainedTeam: Pair<Team, Int>?, teams: List<Pair<Team, Int>>) {
         Bukkit.broadcast(Component.text("=====ランキング====="))
         Bukkit.broadcast(Component.empty())
-        (teams + remainedTeam).sortedBy { it.second }.forEachIndexed { index, pair ->
+        (teams + remainedTeam).filterNotNull().sortedBy { it.second }.forEachIndexed { index, pair ->
             Bukkit.broadcast(
                 Component.text("[${index + 1}位]")
                     .append(Component.space())
@@ -100,11 +100,13 @@ class DeathMessenger(plugin: JavaPlugin, private val config: TetraConfig) : List
                     .append(Component.text("は${pair.second}ブロック塗りつぶして滅んだ"))
             )
         }
-        Bukkit.broadcast(Component.empty())
-        Bukkit.broadcast(Component.text("生き残りのチーム"))
-        Bukkit.broadcast(Component.empty())
-        Bukkit.broadcast(
-            (remainedTeam.first.displayName().append(Component.text("が生き残りました"))).color(NamedTextColor.GOLD)
-        )
+        if (remainedTeam != null) {
+            Bukkit.broadcast(Component.empty())
+            Bukkit.broadcast(Component.text("生き残りのチーム"))
+            Bukkit.broadcast(Component.empty())
+            Bukkit.broadcast(
+                (remainedTeam.first.displayName().append(Component.text("が生き残りました"))).color(NamedTextColor.GOLD)
+            )
+        }
     }
 }

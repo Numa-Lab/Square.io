@@ -48,4 +48,9 @@ class TetraConfig(plugin: Plugin) : BaseConfig(plugin) {
      * 強制移動の速度
      */
     val moveSpeed = DoubleValue(0.3)
+
+    /**
+     * 勝利判定時に自動的にOffにするかどうか
+     */
+    val isAutoOff = BooleanValue(true)
 }

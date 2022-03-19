@@ -120,16 +120,36 @@ class BlockManager(private val config: TetraConfig, plugin: Tetra) {
                                 // チーム死亡判定・ゲーム終了判定
                                 if (isFinalKill) {
                                     val lastTeam = deathMessenger.onTeamDeath(team, getScore(teamColor))
-                                    if (lastTeam != null) {
-                                        deathMessenger.broadCastResult(
-                                            lastTeam to getScore(ColorHelper.getBy(lastTeam)),
-                                            (config.getJoinedTeams() - lastTeam).map { t ->
-                                                t to getScore(
-                                                    ColorHelper.getBy(
-                                                        t
+                                    if (lastTeam.first) {
+                                        // ゲーム終了
+                                        val winner = lastTeam.second
+                                        if (winner != null) {
+                                            deathMessenger.broadCastResult(
+                                                winner to getScore(ColorHelper.getBy(winner)),
+                                                (config.getJoinedTeams() - winner).map { t ->
+                                                    t to getScore(
+                                                        ColorHelper.getBy(
+                                                            t
+                                                        )
                                                     )
-                                                )
-                                            })
+                                                })
+                                        } else {
+                                            // 勝者がいない
+                                            deathMessenger.broadCastResult(
+                                                null,
+                                                (config.getJoinedTeams()).map { t ->
+                                                    t to getScore(
+                                                        ColorHelper.getBy(
+                                                            t
+                                                        )
+                                                    )
+                                                })
+                                        }
+
+                                        if (config.isAutoOff.value()) {
+                                            // 自動的に終了
+                                            config.isGoingOn.value(false)
+                                        }
                                     }
                                 }
 
