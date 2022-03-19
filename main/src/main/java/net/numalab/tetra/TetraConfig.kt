@@ -47,5 +47,5 @@ class TetraConfig(plugin: Plugin) : BaseConfig(plugin) {
     /**
      * 強制移動の速度
      */
-    val moveSpeed = DoubleValue(1.0)
+    val moveSpeed = DoubleValue(0.3)
 }
