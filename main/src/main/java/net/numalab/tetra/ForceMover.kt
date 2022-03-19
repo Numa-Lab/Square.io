@@ -5,6 +5,7 @@ import org.bukkit.entity.Player
 import org.bukkit.event.EventHandler
 import org.bukkit.event.Listener
 import org.bukkit.event.player.PlayerMoveEvent
+import org.bukkit.event.player.PlayerToggleSprintEvent
 import org.bukkit.plugin.java.JavaPlugin
 
 class ForceMover(plugin: JavaPlugin, val config: TetraConfig) : Listener {
@@ -17,20 +18,20 @@ class ForceMover(plugin: JavaPlugin, val config: TetraConfig) : Listener {
         if (!config.isGoingOn.value()) return
         val players = config.getJoinedPlayer(false)
         players.filter { it.gameMode == GameMode.SURVIVAL && it.isValid }.forEach {
-            setVelocity(it)
+            setVelocity(it, config.moveSpeed.value())
         }
     }
 
-    private fun setVelocity(player: Player) {
+    private fun setVelocity(player: Player, speed: Double) {
         val v = player.location.direction.normalize().setY(0.0).normalize().multiply(
             if (player.isOnGround) {
-                .15
+                .15 + speed
             } else {
-                .05
+                .05 + speed
             }
         )
 
-        player.velocity = player.velocity.clone().add(v)
+        player.velocity = v
     }
 
     @EventHandler
@@ -39,6 +40,13 @@ class ForceMover(plugin: JavaPlugin, val config: TetraConfig) : Listener {
             if (config.getJoinedPlayer(false).contains(e.player)) {
                 e.to = e.to.clone().also { it.y = e.from.blockY.toDouble() }    // ラグで高さが変わらないように
             }
+        }
+    }
+
+    @EventHandler
+    fun onSprint(e: PlayerToggleSprintEvent) {
+        if (config.getJoinedPlayer(false).contains(e.player)) {
+            e.isCancelled = true    // スピードを変更しないように
         }
     }
 }

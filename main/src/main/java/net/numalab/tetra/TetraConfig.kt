@@ -2,6 +2,7 @@ package net.numalab.tetra
 
 import net.kunmc.lab.configlib.BaseConfig
 import net.kunmc.lab.configlib.value.BooleanValue
+import net.kunmc.lab.configlib.value.DoubleValue
 import net.kunmc.lab.configlib.value.collection.StringListValue
 import org.bukkit.Bukkit
 import org.bukkit.GameMode
@@ -42,4 +43,9 @@ class TetraConfig(plugin: Plugin) : BaseConfig(plugin) {
      * 地面へのブロックの設置や、強制移動の切り替え
      */
     val isGoingOn = BooleanValue(false)
+
+    /**
+     * 強制移動の速度
+     */
+    val moveSpeed = DoubleValue(1.0)
 }
