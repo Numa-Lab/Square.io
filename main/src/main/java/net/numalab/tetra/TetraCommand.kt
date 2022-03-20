@@ -6,7 +6,9 @@ import net.kunmc.lab.configlib.ConfigCommandBuilder
 import net.kyori.adventure.text.format.NamedTextColor
 import net.kyori.adventure.text.format.TextColor
 import org.bukkit.Bukkit
+import org.bukkit.GameMode
 import org.bukkit.command.CommandException
+import org.bukkit.entity.Player
 import org.bukkit.scoreboard.Team
 
 class TetraCommand(val config: TetraConfig) : Command("tetra") {
@@ -100,6 +102,8 @@ class TetraTeamCommand(private val config: TetraConfig) : Command("team") {
                 }
             }
         }
+
+        children(AutoSetCommand(config))
     }
 
     private fun displayTeam(team: Team): String {
@@ -127,5 +131,54 @@ class TetraTeamCommand(private val config: TetraConfig) : Command("team") {
      */
     private fun checkTeamColor(team: Team): Boolean {
         return ColorHelper.getBy(team) != null
+    }
+}
+
+/**
+ * サバイバルモードのプレイヤーを対象に自動的にチームにjoinするコマンド
+ */
+class AutoSetCommand(private val config: TetraConfig) : Command("autoSet") {
+    init {
+        description("Auto Team Set Command")
+        usage {
+            selectionArgument("AutoSetMode", "all", "notJoined")
+            executes {
+                val toProcess = when (typedArgs[0] as String) {
+                    "all" -> {
+                        Bukkit.getOnlinePlayers().filter { it.gameMode == GameMode.SURVIVAL }
+                    }
+                    "notJoined" -> {
+                        Bukkit.getOnlinePlayers().filter {
+                            !this@AutoSetCommand.config.getJoinedTeams().any { t -> t.entries.contains(it.name) }
+                        }
+                    }
+                    else -> {
+                        fail("正しい引数ではありません")
+                        return@executes
+                    }
+                }
+
+                val affectedCount = toProcess.associateWith { getColor(it) }
+                    .onEach { (player, team) ->
+                        this@AutoSetCommand.config.getJoinedTeams()
+                            .forEach { toLeave -> toLeave.removeEntry(player.name) }
+                        team?.addEntry(player.name)
+                    }.size
+
+                success("$affectedCount 人のプレイヤーにチームを自動設定しました")
+            }
+        }
+    }
+
+    private fun getColor(player: Player): Team? {
+        val bottomBlock = player.location.add(0.0, -1.0, 0.0).block
+        val color = bottomBlock.type.getWoolColor()
+        if (color != null) {
+            val colorHelper = ColorHelper.getBy(color) ?: return null
+            val team =
+                config.getJoinedTeams().filter { it.color() == colorHelper.textColor }.firstOrNull() ?: return null
+            return team
+        }
+        return null
     }
 }

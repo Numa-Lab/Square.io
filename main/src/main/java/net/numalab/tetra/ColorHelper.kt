@@ -48,6 +48,11 @@ class ColorHelper(val dye: DyeColor, val textColor: TextColor) {
             }
         }
 
+        fun getBy(dye: DyeColor): ColorHelper? {
+            val textColor = mapping.entries.firstOrNull { it.value == dye }?.key ?: return null
+            return ColorHelper(dye, textColor)
+        }
+
         fun random(): ColorHelper {
             val rk = mapping.keys.random()
             val rv = mapping[rk]!!
@@ -55,13 +60,6 @@ class ColorHelper(val dye: DyeColor, val textColor: TextColor) {
             return ColorHelper(rv, rk)
         }
     }
-
-    private constructor(textColor: TextColor) : this(
-        mapping[textColor] ?: throw IllegalArgumentException("Unknown Color"),
-        textColor
-    )
-
-    private constructor(team: Team) : this(team.color())
 
     fun equalByDyeColor(other: ColorHelper) = dye == other.dye
 

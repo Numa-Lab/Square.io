@@ -300,3 +300,11 @@ fun Material.sameColoredGlass(dyeColor: DyeColor): Boolean {
         return glasses[dyeColor] == this
     }
 }
+
+fun Material.getWoolColor(): DyeColor? {
+    return if (this.isWool()) {
+        wools.filter { it.value == this }.keys.first()
+    } else {
+        null
+    }
+}
