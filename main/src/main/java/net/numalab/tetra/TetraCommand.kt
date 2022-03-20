@@ -20,25 +20,23 @@ class TetraCommand(val config: TetraConfig) : Command("tetra") {
             executes {
                 when (typedArgs[0] as String) {
                     "ON" -> {
-                        try {
-                            Bukkit.dispatchCommand(sender, "tetra config modify isGoingOn set true")
-                        } catch (e: CommandException) {
-                            fail("コンフィグファイルの変更に失敗しました")
-                        }
-
                         val failed = checkAllTeamColor()
                         if (failed.isNotEmpty()) {
                             fail("以下のチームの色は使用できません\n${failed.joinToString("\n") { it.name }}")
                         } else {
                             if (this@TetraCommand.config.getJoinedTeams()
                                     .filter { it.entries.mapNotNull { e -> Bukkit.getPlayer(e) }.isNotEmpty() }
-                                    .size >= 2
+                                    .size < 2
                             ) {
-                                this@TetraCommand.config.isGoingOn.value(true)
-                                success("ONになりました")
-                            } else {
-                                fail("少なくとも2つ以上のチームを追加してください")
+                                fail("[WARN]少なくともチームメンバーがいる2つ以上のチームを追加してください")
                             }
+                            try {
+                                Bukkit.dispatchCommand(sender, "tetra config modify isGoingOn set true")
+                                this@TetraCommand.config.isGoingOn.value(true)
+                            } catch (e: CommandException) {
+                                fail("コンフィグファイルの変更に失敗しました")
+                            }
+                            success("ONになりました")
                         }
                     }
                     "OFF" -> {
