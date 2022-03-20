@@ -8,7 +8,7 @@ import org.bukkit.scoreboard.Team
 
 class ScoreBoardManager {
     private val scoreBoard = Bukkit.getScoreboardManager().mainScoreboard
-    private fun getObj(): Objective {
+    private fun getScoreObj(): Objective {
         val o = scoreBoard.getObjective("Te_score")
         if (o != null) {
             return o
@@ -16,13 +16,31 @@ class ScoreBoardManager {
         return scoreBoard.registerNewObjective("Te_score", "dummy", Component.text("塗りつぶし数"))
     }
 
-    private var obj = getObj()
+    private fun getResultObj(): Objective {
+        val o = scoreBoard.getObjective("Te_result")
+        if (o != null) {
+            return o
+        }
+        return scoreBoard.registerNewObjective("Te_result", "dummy", Component.text("結果"))
+    }
+
+    private var scoreObj = getScoreObj()
 
     fun updateScoreBoard(team: Team, s: Int) {
-        obj.displaySlot = SIDEBAR
+        scoreObj.displaySlot = SIDEBAR
         val displayName = team.name
-        val score = obj.getScore(displayName)
+        val score = scoreObj.getScore(displayName)
         score.score = s
+    }
+
+    private var resultObj = getResultObj()
+
+    /**
+     * 0:goingOn 1:notGoingOn
+     */
+    fun updateGameState(config: TetraConfig) {
+        val score = resultObj.getScore("state")
+        score.score = if (config.isGoingOn.value()) 0 else 1
     }
 
     /**
@@ -30,8 +48,8 @@ class ScoreBoardManager {
      */
     fun reset() {
         println("reset")
-        obj.displaySlot = null
-        obj.unregister()
-        obj = getObj()
+        scoreObj.displaySlot = null
+        scoreObj.unregister()
+        scoreObj = getScoreObj()
     }
 }

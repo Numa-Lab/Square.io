@@ -113,13 +113,13 @@ class BlockManager(private val config: TetraConfig, plugin: Tetra) {
                                             (toKillTeam.entries.filter { e ->
                                                 val p =
                                                     Bukkit.getPlayer(e); p != null && p.gameMode == GameMode.SURVIVAL
-                                            } - toKillName).isNotEmpty()
+                                            } - toKillName).isEmpty()
 
                                         deathMessenger.addDeadQueue(toKill, it, isFinalKill)
                                         toKill.health = 0.0
                                         toKill.gameMode = GameMode.SPECTATOR
 
-// チーム死亡判定・ゲーム終了判定
+                                        // チーム死亡判定・ゲーム終了判定
                                         if (isFinalKill) {
                                             val lastTeam = deathMessenger.onTeamDeath(
                                                 toKillTeam,
@@ -188,6 +188,8 @@ class BlockManager(private val config: TetraConfig, plugin: Tetra) {
                     }
             }
         }
+        // スコアボード同期
+        scoreBoardManager.updateGameState(config)
     }
 
     private fun getScore(teamColor: ColorHelper?): Int {
