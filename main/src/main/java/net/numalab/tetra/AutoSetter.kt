@@ -15,9 +15,11 @@ class AutoSetter(plugin: Tetra, val config: TetraConfig) {
             val toProcess = Bukkit.getOnlinePlayers().filter { it.gameMode == GameMode.SURVIVAL }
             toProcess.associateWith { getColor(it) }
                 .onEach { (player, team) ->
-                    this.config.getJoinedTeams()
-                        .forEach { toLeave -> toLeave.removeEntry(player.name) }
-                    team?.addEntry(player.name)
+                    if (team != null) {
+                        this.config.getJoinedTeams()
+                            .forEach { toLeave -> toLeave.removeEntry(player.name) }
+                        team.addEntry(player.name)
+                    }
                 }
         }
     }
