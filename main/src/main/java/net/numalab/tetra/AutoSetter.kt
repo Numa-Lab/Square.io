@@ -21,7 +21,11 @@ class AutoSetter(plugin: Tetra, val config: TetraConfig) {
                 .onEach { (player, team) ->
                     if (team != null) {
                         this.config.getJoinedTeams()
-                            .forEach { toLeave -> toLeave.removeEntry(player.name) }
+                            .forEach { toLeave ->
+                                if (toLeave != team) {
+                                    toLeave.removeEntry(player.name)
+                                }
+                            }
                         team.addEntry(player.name)
                         map[player.uniqueId] = player.location.clone()
                     }
