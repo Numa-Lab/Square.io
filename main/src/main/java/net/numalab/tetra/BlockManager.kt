@@ -154,6 +154,7 @@ class BlockManager(private val config: TetraConfig, plugin: Tetra) {
                                                 if (config.isAutoOff.value()) {
                                                     // 自動的に終了
                                                     config.isGoingOn.value(false)
+                                                    reset()
                                                 }
                                             }
                                         }
@@ -174,7 +175,7 @@ class BlockManager(private val config: TetraConfig, plugin: Tetra) {
                                         } else {
                                             // 何も無かったことにする
                                             it.world.getBlockAt(pair.first, bottomLocation.blockY, pair.second).type =
-                                                Material.AIR
+                                                Material.WHITE_WOOL
                                         }
                                     }
                                     playerLineMap.remove(toKill.uniqueId)   // 線をリセット
@@ -240,6 +241,11 @@ class BlockManager(private val config: TetraConfig, plugin: Tetra) {
                 playerLineMap[uuid] = line + pos
             }
         }
+    }
+
+    fun reset() {
+        territoryMap.clear()
+        playerLineMap.clear()
     }
 }
 

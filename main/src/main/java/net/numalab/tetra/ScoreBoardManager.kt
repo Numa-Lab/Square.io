@@ -11,9 +11,10 @@ class ScoreBoardManager {
     private fun getScoreObj(): Objective {
         val o = scoreBoard.getObjective("Te_score")
         if (o != null) {
-            return o
+            return o.also { it.displaySlot = SIDEBAR }
         }
         return scoreBoard.registerNewObjective("Te_score", "dummy", Component.text("塗りつぶし数"))
+            .also { it.displaySlot = SIDEBAR }
     }
 
     private fun getResultObj(): Objective {
@@ -27,7 +28,7 @@ class ScoreBoardManager {
     private var scoreObj = getScoreObj()
 
     fun updateScoreBoard(team: Team, s: Int) {
-        scoreObj.displaySlot = SIDEBAR
+//        scoreObj.displaySlot = SIDEBAR
         val displayName = team.name
         val score = scoreObj.getScore(displayName)
         score.score = s

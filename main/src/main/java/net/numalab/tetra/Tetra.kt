@@ -9,18 +9,21 @@ class Tetra : JavaPlugin() {
         it.loadConfig()
     }
 
+    val command = TetraCommand(config)
+
     init {
         flyLib {
-            command(TetraCommand(config))
+            command(command)
         }
     }
 
     override fun onEnable() {
         // Plugin startup logic
-        BlockManager(config, this)
+        BlockManager(config, this).also { command.blockManager = it }
         BlockBreakPrevent(this, config)
         JumpPrevent(this, config)
         ForceMover(this, config)
+        AutoSetter(this, config)
     }
 
     override fun onDisable() {
