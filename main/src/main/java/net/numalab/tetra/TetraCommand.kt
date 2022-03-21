@@ -11,6 +11,7 @@ import org.bukkit.scoreboard.Team
 
 class TetraCommand(val config: TetraConfig) : Command("tetra") {
     var blockManager: BlockManager? = null
+    var autoSetter: AutoSetter? = null
 
     init {
         description("Tetra command")
@@ -37,6 +38,7 @@ class TetraCommand(val config: TetraConfig) : Command("tetra") {
                                 fail("コンフィグファイルの変更に失敗しました")
                             }
 
+                            autoSetter?.onStart()
                             blockManager?.reset()
                             success("ONになりました")
                         }

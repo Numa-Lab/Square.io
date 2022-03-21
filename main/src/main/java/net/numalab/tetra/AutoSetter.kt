@@ -2,13 +2,17 @@ package net.numalab.tetra
 
 import org.bukkit.Bukkit
 import org.bukkit.GameMode
+import org.bukkit.Location
 import org.bukkit.entity.Player
 import org.bukkit.scoreboard.Team
+import java.util.*
 
 class AutoSetter(plugin: Tetra, val config: TetraConfig) {
     init {
         plugin.server.scheduler.runTaskTimer(plugin, Runnable { tick() }, 0, 1)
     }
+
+    private val map = mutableMapOf<UUID, Location>()
 
     private fun tick() {
         if (!config.isGoingOn.value()) {
@@ -19,9 +23,28 @@ class AutoSetter(plugin: Tetra, val config: TetraConfig) {
                         this.config.getJoinedTeams()
                             .forEach { toLeave -> toLeave.removeEntry(player.name) }
                         team.addEntry(player.name)
+                        map[player.uniqueId] = player.location.clone()
                     }
                 }
         }
+    }
+
+    fun onStart() {
+        map.forEach { (t, u) ->
+            Bukkit.getPlayer(t)?.teleport(u)
+        }
+
+        Bukkit.getOnlinePlayers()
+            .filter { it.gameMode == GameMode.SURVIVAL && !map.containsKey(it.uniqueId) }
+            .forEach {
+                it.gameMode = GameMode.SPECTATOR
+            }
+
+        clear()
+    }
+
+    fun clear() {
+        map.clear()
     }
 
     private fun getColor(player: Player): Team? {

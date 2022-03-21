@@ -12,7 +12,7 @@ import java.util.function.BiFunction
 /**
  * チームごとに羊毛、色付きガラスの準備をして地面に設置するクラス
  */
-class BlockManager(private val config: TetraConfig, plugin: Tetra) {
+class BlockManager(private val config: TetraConfig, plugin: Tetra, val autoSetter: AutoSetter) {
     companion object {
         private fun setColoredWoolAt(location: Location, color: DyeColor) {
             location.block.type = wools[color]!!
@@ -37,9 +37,7 @@ class BlockManager(private val config: TetraConfig, plugin: Tetra) {
         config.isGoingOn.onModify(BiFunction { bool, _ ->
             if (!bool) {
                 // すべてリセット
-                territoryMap.clear()
-                playerLineMap.clear()
-                scoreBoardManager.reset()
+                reset()
             }
 
             return@BiFunction false
@@ -246,6 +244,8 @@ class BlockManager(private val config: TetraConfig, plugin: Tetra) {
     fun reset() {
         territoryMap.clear()
         playerLineMap.clear()
+        autoSetter.clear()
+        scoreBoardManager.reset()
     }
 }
 
