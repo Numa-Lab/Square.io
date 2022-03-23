@@ -66,7 +66,7 @@ class BlockManager(private val config: TetraConfig, plugin: Tetra, val autoSette
 
                 team.entries
                     .mapNotNull { e -> Bukkit.getOnlinePlayers().find { it.name == e } }
-                    .filter { it.gameMode == GameMode.SURVIVAL }
+                    .filter { it.gameMode == config.targetGameMode.value() }
                     .forEach {
                         val bottomLocation = it.location.block.getRelative(0, -1, 0).location
                         if (bottomLocation.block.type.isWool()) {
@@ -75,7 +75,13 @@ class BlockManager(private val config: TetraConfig, plugin: Tetra, val autoSette
                                 if (playerHasLine(it)) {
                                     // 線がある場合は塗りつぶしをする
                                     val line = playerLineMap[it.uniqueId]!!
-                                    fillWith(teamColor, line, bottomLocation.blockY.toDouble(), bottomLocation.world)
+                                    fillWith(
+                                        teamColor,
+                                        line,
+                                        bottomLocation.blockY.toDouble(),
+                                        bottomLocation.world,
+                                        it
+                                    )
                                     playerLineMap.remove(it.uniqueId)   // 線をリセット
                                 }
                                 // スコアボードを更新
@@ -110,7 +116,7 @@ class BlockManager(private val config: TetraConfig, plugin: Tetra, val autoSette
                                         val isFinalKill =
                                             (toKillTeam.entries.filter { e ->
                                                 val p =
-                                                    Bukkit.getPlayer(e); p != null && p.gameMode == GameMode.SURVIVAL
+                                                    Bukkit.getPlayer(e); p != null && p.gameMode == config.targetGameMode.value()
                                             } - toKillName).isEmpty()
 
                                         deathMessenger.addDeadQueue(toKill, it, isFinalKill)
@@ -123,6 +129,19 @@ class BlockManager(private val config: TetraConfig, plugin: Tetra, val autoSette
                                                 toKillTeam,
                                                 getScore(ColorHelper.getBy(toKillTeam))
                                             )
+                                            val toKillColor = ColorHelper.getBy(toKillTeam)
+                                            if (toKillColor != null) {
+                                                val toKillTerritory = territoryMap[toKillColor]
+                                                // チームが塗りつぶしをしている場合は塗りつぶしをリセット
+                                                toKillTerritory?.getNotZeros()?.forEach { tr ->
+                                                    val block =
+                                                        it.world.getBlockAt(tr.first, bottomLocation.blockY, tr.second)
+                                                    block.type = Material.WHITE_WOOL
+                                                }
+
+                                                territoryMap.remove(toKillColor)
+                                            }
+
                                             if (lastTeam.first) {
                                                 // ゲーム終了
                                                 val winner = lastTeam.second
@@ -191,7 +210,7 @@ class BlockManager(private val config: TetraConfig, plugin: Tetra, val autoSette
         scoreBoardManager.updateGameState(config)
     }
 
-    private fun getScore(teamColor: ColorHelper?): Int {
+    fun getScore(teamColor: ColorHelper?): Int {
         if (teamColor == null) return -1
         return territoryMap[teamColor]?.getNotZeros()?.size ?: -1
     }
@@ -209,7 +228,7 @@ class BlockManager(private val config: TetraConfig, plugin: Tetra, val autoSette
         }
     }
 
-    private fun fillWith(color: ColorHelper, line: List<Pair<Int, Int>>, y: Double, world: World) {
+    private fun fillWith(color: ColorHelper, line: List<Pair<Int, Int>>, y: Double, world: World, drawer: Player) {
         val territory = territoryMap[color]
         if (territory != null) {
             val linePosSet = PosSet.of(line)
@@ -219,6 +238,62 @@ class BlockManager(private val config: TetraConfig, plugin: Tetra, val autoSette
                 setColoredWoolAt(MinecraftAdapter.toLocation(Pair(it.first, it.second), world, y), color)
             }
             territoryMap[color] = territory + toFill
+            (territoryMap.keys - color).forEach {
+                val removed = territoryMap[it]!! - toFill
+                if (removed.getNotZeros().isEmpty()) {
+                    val toKillTeam =
+                        config.getJoinedTeams().find { t -> ColorHelper.getBy(t) == it }
+                    if (toKillTeam != null) {
+                        val toKill = toKillTeam.entries.mapNotNull { e -> Bukkit.getPlayer(e) }
+                            .filter { p -> p.gameMode == config.targetGameMode.value() }
+                        toKill.forEachIndexed { index, k ->
+                            deathMessenger.addDeadQueue(k, drawer, index == toKill.lastIndex)
+                            k.health = 0.0
+                            k.gameMode = GameMode.SPECTATOR
+                        }
+
+                        val lastTeam = deathMessenger.onTeamDeath(
+                            toKillTeam,
+                            getScore(ColorHelper.getBy(toKillTeam))
+                        )
+
+                        if (lastTeam.first) {
+                            val winner = lastTeam.second
+                            if (winner != null) {
+                                deathMessenger.broadCastResult(
+                                    winner to getScore(ColorHelper.getBy(winner)),
+                                    (config.getJoinedTeams() - winner).map { t ->
+                                        t to getScore(
+                                            ColorHelper.getBy(
+                                                t
+                                            )
+                                        )
+                                    })
+                            } else {
+                                // 勝者がいない
+                                deathMessenger.broadCastResult(
+                                    null,
+                                    (config.getJoinedTeams()).map { t ->
+                                        t to getScore(
+                                            ColorHelper.getBy(
+                                                t
+                                            )
+                                        )
+                                    })
+                            }
+
+                            if (config.isAutoOff.value()) {
+                                // 自動的に終了
+                                config.isGoingOn.value(false)
+                                reset()
+                            }
+                        }
+                    }
+                    territoryMap.remove(it)
+                } else {
+                    territoryMap[it] = removed
+                }
+            }
         } else {
             // 領地がないのに塗ろうとしてる
             // 多分通らない

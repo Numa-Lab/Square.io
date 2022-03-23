@@ -16,17 +16,11 @@ class AutoSetter(plugin: Tetra, val config: TetraConfig) {
 
     private fun tick() {
         if (!config.isGoingOn.value()) {
-            val toProcess = Bukkit.getOnlinePlayers().filter { it.gameMode == GameMode.SURVIVAL }
+            val toProcess = Bukkit.getOnlinePlayers().filter { it.gameMode == config.targetGameMode.value() }
             toProcess.associateWith { getColor(it) }
                 .onEach { (player, team) ->
                     if (team != null) {
-                        this.config.getJoinedTeams()
-                            .forEach { toLeave ->
-                                if (toLeave != team) {
-                                    toLeave.removeEntry(player.name)
-                                }
-                            }
-                        team.addEntry(player.name)
+                        if (!team.entries.contains(player.name)) team.addEntry(player.name)
                         map[player.uniqueId] = player.location.clone()
                     }
                 }
@@ -39,7 +33,7 @@ class AutoSetter(plugin: Tetra, val config: TetraConfig) {
         }
 
         Bukkit.getOnlinePlayers()
-            .filter { it.gameMode == GameMode.SURVIVAL && !map.containsKey(it.uniqueId) }
+            .filter { it.gameMode == config.targetGameMode.value() && !map.containsKey(it.uniqueId) }
             .forEach {
                 it.gameMode = GameMode.SPECTATOR
             }

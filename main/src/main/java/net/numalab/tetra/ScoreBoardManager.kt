@@ -14,7 +14,6 @@ class ScoreBoardManager {
             return o.also { it.displaySlot = SIDEBAR }
         }
         return scoreBoard.registerNewObjective("Te_score", "dummy", Component.text("塗りつぶし数"))
-            .also { it.displaySlot = SIDEBAR }
     }
 
     private fun getResultObj(): Objective {
@@ -28,7 +27,6 @@ class ScoreBoardManager {
     private var scoreObj = getScoreObj()
 
     fun updateScoreBoard(team: Team, s: Int) {
-//        scoreObj.displaySlot = SIDEBAR
         val displayName = team.name
         val score = scoreObj.getScore(displayName)
         score.score = s
@@ -49,7 +47,6 @@ class ScoreBoardManager {
      */
     fun reset() {
         println("reset")
-        scoreObj.displaySlot = null
         scoreObj.unregister()
         scoreObj = getScoreObj()
     }

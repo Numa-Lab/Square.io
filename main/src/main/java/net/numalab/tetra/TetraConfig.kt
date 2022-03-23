@@ -3,6 +3,7 @@ package net.numalab.tetra
 import net.kunmc.lab.configlib.BaseConfig
 import net.kunmc.lab.configlib.value.BooleanValue
 import net.kunmc.lab.configlib.value.DoubleValue
+import net.kunmc.lab.configlib.value.EnumValue
 import net.kunmc.lab.configlib.value.collection.StringListValue
 import org.bukkit.Bukkit
 import org.bukkit.GameMode
@@ -16,12 +17,12 @@ class TetraConfig(plugin: Plugin) : BaseConfig(plugin) {
         return joinedTeams.value().mapNotNull { Bukkit.getScoreboardManager().mainScoreboard.getTeam(it) }.distinct()
     }
 
-    fun getJoinedPlayer(containNotSurvival: Boolean): List<Player> {
-        return if (containNotSurvival) {
+    fun getJoinedPlayer(containNotTargetGameMode: Boolean): List<Player> {
+        return if (containNotTargetGameMode) {
             getJoinedTeams().map { it.entries }.flatten().mapNotNull { Bukkit.getPlayer(it) }
         } else {
             getJoinedTeams().map { it.entries }.flatten().mapNotNull { Bukkit.getPlayer(it) }
-                .filter { it.gameMode == GameMode.SURVIVAL }
+                .filter { it.gameMode == targetGameMode.value() }
         }
     }
 
@@ -53,4 +54,11 @@ class TetraConfig(plugin: Plugin) : BaseConfig(plugin) {
      * 勝利判定時に自動的にOffにするかどうか
      */
     val isAutoOff = BooleanValue(true)
+
+    val targetGameMode = EnumValue<GameMode>(GameMode.ADVENTURE)
+
+    /**
+     * 領土の値×この値 + moveSpeed = 強制移動の速度
+     */
+    val boostRate = DoubleValue(0.001)
 }

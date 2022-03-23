@@ -4,7 +4,6 @@ import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.format.NamedTextColor
 import net.kyori.adventure.text.format.TextDecoration
 import org.bukkit.Bukkit
-import org.bukkit.GameMode
 import org.bukkit.entity.Player
 import org.bukkit.event.EventHandler
 import org.bukkit.event.Listener
@@ -21,6 +20,7 @@ class DeathMessenger(plugin: JavaPlugin, private val config: TetraConfig) : List
 
     @EventHandler
     private fun onDeath(e: PlayerDeathEvent) {
+        if (!config.isGoingOn.value()) return
         val found = deadQueue.find { it.first.uniqueId == e.entity.uniqueId }
         if (found != null) {
             e.deathMessage(found.second)
@@ -77,7 +77,7 @@ class DeathMessenger(plugin: JavaPlugin, private val config: TetraConfig) : List
         val notEndTeam = config.getJoinedTeams()
             .filterNot {
                 it.entries.mapNotNull { e -> Bukkit.getPlayer(e) }
-                    .all { p -> p.gameMode != GameMode.SURVIVAL || p.isDead }
+                    .all { p -> p.gameMode != config.targetGameMode.value() || p.isDead }
                         || it.entries.isEmpty()
             }
         if (notEndTeam.size == 1) {

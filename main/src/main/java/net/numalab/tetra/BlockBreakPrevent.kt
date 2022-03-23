@@ -1,6 +1,5 @@
 package net.numalab.tetra
 
-import org.bukkit.GameMode
 import org.bukkit.event.EventHandler
 import org.bukkit.event.Listener
 import org.bukkit.plugin.java.JavaPlugin
@@ -13,7 +12,7 @@ class BlockBreakPrevent(plugin: JavaPlugin, val config: TetraConfig) : Listener 
     @EventHandler
     fun onBlockBreak(event: org.bukkit.event.block.BlockBreakEvent) {
         if (config.isGoingOn.value() &&
-            event.player.gameMode == GameMode.SURVIVAL &&
+            event.player.gameMode == config.targetGameMode.value() &&
             config.getJoinedPlayer(false).contains(event.player)
         ) {
             // ゲーム中はブロック破壊不可

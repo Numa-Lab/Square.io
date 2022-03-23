@@ -178,6 +178,30 @@ class PosSet(private val arr: Array<ByteArray>, val startX: Int, val startZ: Int
         return newArr
     }
 
+    operator fun minus(toMinus: PosSet): PosSet {
+        if (this.minX > toMinus.maxX || this.minZ > toMinus.maxZ || this.maxX < toMinus.minX || this.maxZ < toMinus.minZ) {
+            return this
+        }
+
+        val maxX = this.maxX
+        val maxZ = this.maxZ
+        val minX = this.minX
+        val minZ = this.minZ
+
+        val newArr = PosSet(minX, minZ, maxX, maxZ)
+
+        // Copy this to newArr
+        this.getNotZeros().forEach {
+            if (!toMinus.contains(it.first to it.second)) {
+                newArr[it.first, it.second, true] = it.third
+            }
+        }
+
+        newArr.updateMinMax()
+
+        return newArr
+    }
+
 
     fun add(x: Int, z: Int, value: Byte, disableUpdate: Boolean = false): PosSet {
         return if ((z - startZ) in arr.indices && x - startX in arr[(z - startZ)].indices) {
