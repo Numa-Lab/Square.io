@@ -46,7 +46,6 @@ class ScoreBoardManager {
      * すべての表示を消去する
      */
     fun reset() {
-        println("reset")
         scoreObj.unregister()
         scoreObj = getScoreObj()
     }

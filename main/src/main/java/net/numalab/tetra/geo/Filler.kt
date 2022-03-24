@@ -131,7 +131,7 @@ class PosSet(private val arr: Array<ByteArray>, val startX: Int, val startZ: Int
      * @Note [disableUpdate]をtrueにすると、[updateMinMax]を呼び出さない(超推奨)
      */
     operator fun set(x: Int, z: Int, disableUpdate: Boolean = false, value: Byte) {
-        setByIndex(x - startX, z - startZ, value)
+        setByIndex(x - startX, z - startZ, value, disableUpdate)
     }
 
     fun setAll(triples: List<Triple<Int, Int, Byte>>) {
@@ -231,6 +231,12 @@ class PosSet(private val arr: Array<ByteArray>, val startX: Int, val startZ: Int
             }
         }
         return list
+    }
+
+    fun clone(): PosSet {
+        val newArr = PosSet(startX, startZ, maxX, maxZ)
+        newArr.setAll(getNotZeros())
+        return newArr
     }
 }
 

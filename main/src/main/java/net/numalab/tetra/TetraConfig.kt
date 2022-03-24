@@ -4,6 +4,7 @@ import net.kunmc.lab.configlib.BaseConfig
 import net.kunmc.lab.configlib.value.BooleanValue
 import net.kunmc.lab.configlib.value.DoubleValue
 import net.kunmc.lab.configlib.value.EnumValue
+import net.kunmc.lab.configlib.value.IntegerValue
 import net.kunmc.lab.configlib.value.collection.StringListValue
 import org.bukkit.Bukkit
 import org.bukkit.GameMode
@@ -61,4 +62,9 @@ class TetraConfig(plugin: Plugin) : BaseConfig(plugin) {
      * 領土の値×この値 + moveSpeed = 強制移動の速度
      */
     val boostRate = DoubleValue(0.001)
+
+    /**
+     * 1tickあたりのブロック変更数
+     */
+    val maxBlockChangePerTick = IntegerValue(100)
 }
