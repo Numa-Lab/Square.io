@@ -240,6 +240,26 @@ class BlockManager(private val config: TetraConfig, val plugin: Tetra, val autoS
             val fillOrder = FillOrder(line.toList(), territory.clone(), config.maxBlockChangePerTick.value())
             val worldFillOrder = WorldFillOrder(world, y.toInt(), color, fillOrder, drawer) { toFill ->
                 territoryMap[color] = territory + toFill
+
+                ((territory + toFill) - territory).also { gained ->
+                    config.getJoinedPlayer(false)
+                        .filter { p -> gained.contains(p.location.blockX to p.location.blockZ) }
+                        .forEach { p ->
+                            // 塗りつぶして増えた部分にいた人をkill
+                            p.health = 0.0
+                            p.gameMode = GameMode.SPECTATOR
+
+                            val t = config.getJoinedTeams().find { t -> t.entries.contains(p.name) }
+                            if (t != null) {
+                                val remain = t.entries.mapNotNull { e -> Bukkit.getPlayer(e) }
+                                    .filter { it.gameMode == config.targetGameMode.value() }
+                                deathMessenger.addDeadQueue(p, drawer, remain.isEmpty())
+                            } else {
+                                deathMessenger.addDeadQueue(p, drawer, false)
+                            }
+                        }
+                }
+
                 (territoryMap.keys - color).forEach {
                     val removed = territoryMap[it]!! - toFill
                     if (removed.getNotZeros().isEmpty()) {
