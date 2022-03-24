@@ -27,6 +27,7 @@ class ScoreBoardManager {
     private var scoreObj = getScoreObj()
 
     fun updateScoreBoard(team: Team, s: Int) {
+        if (s == -1) return
         val displayName = team.name
         val score = scoreObj.getScore(displayName)
         score.score = s

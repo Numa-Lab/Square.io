@@ -31,8 +31,7 @@ class ForceMover(plugin: JavaPlugin, val config: TetraConfig, val blockManager: 
 
     private fun calculateSpeed(): Map<Team, Double> {
         return config.getJoinedTeams().associateWith {
-            val color = ColorHelper.getBy(it)
-            val score = blockManager.getScore(color)
+            val score = blockManager.getScore(it)
             return@associateWith if (score > 0) (config.moveSpeed.value() + score * config.boostRate.value()) else config.moveSpeed.value()
         }
     }
