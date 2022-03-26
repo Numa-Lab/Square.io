@@ -230,7 +230,9 @@ class BlockManager(private val config: TetraConfig, val plugin: Tetra, val autoS
             territoryMap[color] = territoryMap[color]!!.add(pos.first, pos.second, 1.toByte())
         } else {
             territoryMap[color] =
-                PosSet(pos.first, pos.second, pos.first, pos.second).also { it[pos.first, pos.second] = 1.toByte() }
+                PosSet(pos.first, pos.second, pos.first, pos.second).also {
+                    it[pos.first, pos.second, false] = 1.toByte()
+                }
         }
     }
 
@@ -245,6 +247,12 @@ class BlockManager(private val config: TetraConfig, val plugin: Tetra, val autoS
                     config.getJoinedPlayer(false)
                         .filter { p -> gained.contains(p.location.blockX to p.location.blockZ) }
                         .forEach { p ->
+                            val team = config.getJoinedTeams().find { it.entries.contains(p.name) }
+                            if (team != null && ColorHelper.getBy(team) == color) {
+                                // 同じ色のチームの人は殺さないようにする
+                                return@forEach
+                            }
+
                             // 塗りつぶして増えた部分にいた人をkill
                             p.health = 0.0
                             p.gameMode = GameMode.SPECTATOR

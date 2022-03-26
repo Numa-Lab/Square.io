@@ -130,7 +130,7 @@ class PosSet(private val arr: Array<ByteArray>, val startX: Int, val startZ: Int
      * @param z z座標
      * @Note [disableUpdate]をtrueにすると、[updateMinMax]を呼び出さない(超推奨)
      */
-    operator fun set(x: Int, z: Int, disableUpdate: Boolean = false, value: Byte) {
+    operator fun set(x: Int, z: Int, disableUpdate: Boolean, value: Byte) {
         setByIndex(x - startX, z - startZ, value, disableUpdate)
     }
 
@@ -213,7 +213,7 @@ class PosSet(private val arr: Array<ByteArray>, val startX: Int, val startZ: Int
         } else {
             // Need To Expand
             val toAdd = PosSet(x, z, x, z)
-            toAdd[x, z] = value
+            toAdd[x, z, true] = value
             this + toAdd
         }
     }
