@@ -118,7 +118,7 @@ class PosSet(private val arr: Array<ByteArray>, val startX: Int, val startZ: Int
         return getByIndex(x - startX, z - startZ)
     }
 
-    fun getByIndex(x: Int, z: Int): Byte {
+    private fun getByIndex(x: Int, z: Int): Byte {
         if (z in arr.indices && x in arr[z].indices) {
             return arr[z][x]
         }
@@ -134,15 +134,7 @@ class PosSet(private val arr: Array<ByteArray>, val startX: Int, val startZ: Int
         setByIndex(x - startX, z - startZ, value, disableUpdate)
     }
 
-    fun setAll(triples: List<Triple<Int, Int, Byte>>) {
-        for (triple in triples) {
-            setByIndex(triple.first - startX, triple.second - startZ, triple.third, true)
-        }
-
-        updateMinMax()
-    }
-
-    fun setByIndex(x: Int, z: Int, value: Byte, disableUpdate: Boolean = false) {
+    private fun setByIndex(x: Int, z: Int, value: Byte, disableUpdate: Boolean = false) {
         if (z in arr.indices && x in arr[z].indices) {
             arr[z][x] = value
 
@@ -169,12 +161,15 @@ class PosSet(private val arr: Array<ByteArray>, val startX: Int, val startZ: Int
 
         val newArr = PosSet(minX, minZ, maxX, maxZ)
 
-        // Copy this to newArr
-        newArr.setAll(this.getNotZeros())
+        val zero = 0.toByte()
 
-        // Copy other to newArr
-        newArr.setAll(other.getNotZeros())
+        for (z in minZ..maxZ) {
+            for (x in minX..maxX) {
+                newArr[x, z, true] = if (this[x, z] != zero || other[x, z] != zero) 1.toByte() else zero
+            }
+        }
 
+        newArr.updateMinMax()
         return newArr
     }
 
@@ -191,9 +186,10 @@ class PosSet(private val arr: Array<ByteArray>, val startX: Int, val startZ: Int
         val newArr = PosSet(minX, minZ, maxX, maxZ)
 
         // Copy this to newArr
-        this.getNotZeros().forEach {
-            if (!toMinus.contains(it.first to it.second)) {
-                newArr[it.first, it.second, true] = it.third
+        for (z in minZ..maxZ) {
+            for (x in minX..maxX) {
+                newArr[x, z, true] =
+                    if (this[x, z] != 0.toByte() && toMinus[x, z] == 0.toByte()) 1.toByte() else 0.toByte()
             }
         }
 
@@ -220,6 +216,7 @@ class PosSet(private val arr: Array<ByteArray>, val startX: Int, val startZ: Int
 
     /**
      * @return Triple of (x, z, value) whose value is not 0
+     * @note this function is not efficient,so use it only when you need to get exactly value
      */
     fun getNotZeros(): List<Triple<Int, Int, Byte>> {
         val list = mutableListOf<Triple<Int, Int, Byte>>()
@@ -235,81 +232,51 @@ class PosSet(private val arr: Array<ByteArray>, val startX: Int, val startZ: Int
 
     fun clone(): PosSet {
         val newArr = PosSet(startX, startZ, maxX, maxZ)
-        newArr.setAll(getNotZeros())
+        for (z in newArr.minZ..newArr.maxZ) {
+            for (x in newArr.minX..newArr.maxX) {
+                newArr[x, z, true] = this[x, z]
+            }
+        }
+
+        newArr.updateMinMax()
         return newArr
     }
-}
-
-fun fill(one: PosSet, two: PosSet): PosSet {
-    val all = one + two
-    val xRange = (all.minX - 1)..(all.maxX + 1)
-    val zRange = (all.minZ - 1)..(all.maxZ + 1)
-
-    val outside = fillInRangeFromOutside(all, xRange, zRange)
-    val inside = flipInRange(outside, all.minX..all.maxX, all.minZ..all.maxZ)
-    return inside
-}
-
-fun get4Relative(x: Int, z: Int): List<Pair<Int, Int>> {
-    return listOf(
-        Pair(x, z - 1),
-        Pair(x - 1, z),
-        Pair(x + 1, z),
-        Pair(x, z + 1),
-    )
-}
-
-fun get8Relative(x: Int, z: Int): List<Pair<Int, Int>> {
-    return listOf(
-        Pair(x, z - 1),
-        Pair(x - 1, z - 1),
-        Pair(x - 1, z),
-        Pair(x - 1, z + 1),
-        Pair(x, z + 1),
-        Pair(x + 1, z + 1),
-        Pair(x + 1, z),
-        Pair(x + 1, z - 1)
-    )
 }
 
 fun fillInRangeFromOutside(all: PosSet, xRange: IntRange, zRange: IntRange): PosSet {
     val result = PosSet(xRange.first, zRange.first, xRange.last, zRange.last)
     for (z in zRange) {
         for (x in xRange) {
-            val p = Pair(x, z)
-            if (p !in all) {
-                result[x, z, true] = 1.toByte()
-            } else {
+            if (all[x, z] != 0.toByte()) {
                 break
+            } else {
+                result[x, z, true] = 1.toByte()
             }
         }
 
         for (x in xRange.reversed()) {
-            val p = Pair(x, z)
-            if (p !in all) {
-                result[x, z, true] = 1.toByte()
-            } else {
+            if (all[x, z] != 0.toByte()) {
                 break
+            } else {
+                result[x, z, true] = 1.toByte()
             }
         }
     }
 
     for (x in xRange) {
         for (z in zRange) {
-            val p = Pair(x, z)
-            if (p !in all) {
-                result[x, z, true] = 1.toByte()
-            } else {
+            if (all[x, z] != 0.toByte()) {
                 break
+            } else {
+                result[x, z, true] = 1.toByte()
             }
         }
 
         for (z in zRange.reversed()) {
-            val p = Pair(x, z)
-            if (p !in all) {
-                result[x, z, true] = 1.toByte()
-            } else {
+            if (all[x, z] != 0.toByte()) {
                 break
+            } else {
+                result[x, z, true] = 1.toByte()
             }
         }
     }
@@ -321,8 +288,7 @@ fun flipInRange(outside: PosSet, xRange: IntRange, zRange: IntRange): PosSet {
     val out = PosSet(xRange.first, zRange.first, xRange.last, zRange.last)
     for (x in xRange) {
         for (z in zRange) {
-            val p = Pair(x, z)
-            if (p !in outside) {
+            if (outside[x, z] == 0.toByte()) {
                 out[x, z, true] = 1.toByte()
             } else {
                 out[x, z, true] = 0.toByte()
