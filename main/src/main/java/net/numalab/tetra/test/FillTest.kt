@@ -1,17 +1,19 @@
 package net.numalab.tetra.test
 
-import net.numalab.tetra.geo.PosSet
-import net.numalab.tetra.geo.fill
-import net.numalab.tetra.geo.fillInRangeFromOutside
-import net.numalab.tetra.geo.flipInRange
+import net.numalab.tetra.geo.*
 import java.awt.Color
 import java.awt.image.BufferedImage
 import java.io.File
 import javax.imageio.ImageIO
 
+private val times = 10000
+
 fun main() {
-//    FillTest().test()
-    FillTest().bench()
+    FillAlgorithm.values().map {
+        it to FillTest().bench(it)
+    }.sortedBy { it.second }.forEach {
+        println("${it.first.name} : ${it.second / 1000000.0 / times.toDouble()} ms / time")
+    }
 }
 
 private class FillTest {
@@ -23,53 +25,70 @@ private class FillTest {
 
     val expected = File("${currentPath}expected.png")
 
-    fun test() {
+    fun test(algorithm: FillAlgorithm, differColor: Color = Color.MAGENTA): Boolean {
         println("Pos1 load")
         val pos1 = convertFromImage(test1)
-        printIntoImage(pos1, "pos1")
+        printIntoImage(pos1, "${algorithm.name}/pos1")
         println("Pos2 load")
         val pos2 = convertFromImage(test2)
-        printIntoImage(pos2, "pos2")
+        printIntoImage(pos2, "${algorithm.name}/pos2")
 
         println("Pos3 load")
         val pos3 = pos1 + pos2
-        printIntoImage(pos3, "pos1 + pos2")
+        printIntoImage(pos3, "${algorithm.name}/pos1 + pos2")
 
         val xRange = (pos3.minX - 1)..(pos3.maxX + 1)
         val zRange = (pos3.minZ - 1)..(pos3.maxZ + 1)
 
         println("OutSide load")
         val outside = fillInRangeFromOutside(pos3, xRange, zRange)
-        printIntoImage(outside, "outside")
+        printIntoImage(outside, "${algorithm.name}/outside")
         println("Inside load")
         val inside = flipInRange(outside, pos3.minX..pos3.maxX, pos3.minZ..pos3.maxZ)
-        printIntoImage(inside, "inside")
+        printIntoImage(inside, "${algorithm.name}/inside")
 
         println("Fill")
-        val fill = fill(pos1, pos2)
-        printIntoImage(fill, "fill")
+        val fill = fill(pos1, pos2, algorithm)
+        printIntoImage(fill, "${algorithm.name}/fill")
 
         println("Expected load")
         val expected = convertFromImage(expected)
 
         println("Check")
+        val differFile = File("${currentPath}${algorithm.name}/differ.png")
+        if (!differFile.parentFile.exists()) {
+            differFile.parentFile.mkdirs()
+        }
+        val image = BufferedImage(1000, 1000, BufferedImage.TYPE_INT_RGB)
+        val g = image.graphics
         var isSame = true
-        for (x in fill.startX..fill.maxX) {
-            for (z in fill.startZ..fill.maxZ) {
+        for (x in 0 until 1000) {
+            for (z in 0 until 1000) {
                 if (fill[x, z] != expected[x, z]) {
                     isSame = false
-                    println("$x, $z: ${fill[x, z]} != ${expected[x, z]}")
-                    break
+                    g.color = differColor
+                } else {
+                    g.color = Color.WHITE
                 }
+                g.drawLine(x, z, x, z)
             }
         }
-        println("Result: $isSame")
+        ImageIO.write(image, "png", differFile)
 
+        println("Result: $isSame")
         println("END!")
+
+        return isSame
     }
 
-    fun bench() {
-        val times = 100
+    fun bench(algorithm: FillAlgorithm): Long {
+        val check = test(algorithm)
+        if (!check) {
+            println("Check failed: $algorithm")
+            return Long.MAX_VALUE
+        }
+
+        println("Starting Benchmark for $algorithm")
 
         val pos1 = convertFromImage(test1)
         printIntoImage(pos1, "pos1")
@@ -77,23 +96,24 @@ private class FillTest {
         printIntoImage(pos2, "pos2")
         val start = System.nanoTime()
         for (i in 0..times) {
-            fill(pos1, pos2)
+            fill(pos1, pos2, algorithm)
         }
         val end = System.nanoTime()
         println("time: ${(end - start) / 1000000.0}ms")
         println("time per: ${(end - start) / (times * 1000000.0)}ms")
+
+        return end - start
     }
 
     fun convertFromImage(path: File): PosSet {
         val image = ImageIO.read(path)
         val width = image.width
         val height = image.height
-        val pixels = image.raster.getPixels(0, 0, width, height, null as IntArray?)
         val posSet = PosSet(0, 0, width, height)
         for (x in 0 until width) {
             for (y in 0 until height) {
-                val index = x + y * width
-                if (pixels[index] == 0) {
+                val pixels = image.getRGB(x, y)
+                if (pixels == -1) {
                     posSet[x, y, true] = 0.toByte()
                 } else {
                     posSet[x, y, true] = 1.toByte()
@@ -105,28 +125,28 @@ private class FillTest {
         return posSet
     }
 
-    fun printIntoImage(posSet: PosSet, name: String) {
-        printIntoImage(posSet, File("${currentPath}$name.png"))
+    fun printIntoImage(posSet: PosSet, name: String, toX: Int = 1000, toZ: Int = 1000) {
+        printIntoImage(posSet, File("${currentPath}$name.png"), toX, toZ)
     }
 
-    fun printIntoImage(posSet: PosSet, toWrite: File) {
+    fun printIntoImage(posSet: PosSet, toWrite: File, toX: Int = posSet.maxX, toZ: Int = posSet.maxZ) {
         println("writing image to $toWrite")
+        if (!toWrite.parentFile.exists()) {
+            toWrite.parentFile.mkdirs()
+        }
 
-        val image =
-            BufferedImage(posSet.maxX - posSet.minX + 1, posSet.maxZ - posSet.minZ + 1, BufferedImage.TYPE_INT_RGB)
-        val width = image.width
-        val height = image.height
+        val image = BufferedImage(toX, toZ, BufferedImage.TYPE_INT_RGB)
 
         val g = image.graphics
 
-        for (x in 0 until width) {
-            for (y in 0 until height) {
-                if (posSet[x, y] == 0.toByte()) {
+        for (x in 0 until toX) {
+            for (z in 0 until toZ) {
+                if (posSet[x, z] == 0.toByte()) {
                     g.color = Color.WHITE
                 } else {
                     g.color = Color.BLACK
                 }
-                g.drawLine(x, y, x, y)
+                g.drawLine(x, z, x, z)
             }
         }
         ImageIO.write(image, "png", toWrite)

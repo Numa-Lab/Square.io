@@ -6,7 +6,15 @@ import kotlin.math.max
 /**
  * [arr] [index-z][index-x]
  */
-class PosSet(private val arr: Array<ByteArray>, val startX: Int, val startZ: Int) {
+class PosSet(
+    private val arr: Array<ByteArray>,
+    val startX: Int,
+    val startZ: Int,
+    cMinX: Int = minX(arr, startX),
+    cMinZ: Int = minZ(arr, startZ),
+    cMaxX: Int = maxX(arr, startX),
+    cMaxZ: Int = maxZ(arr, startZ)
+) {
     companion object {
         fun of(poses: List<Pair<Int, Int>>): PosSet {
             val minX = poses.minOf { it.first }
@@ -14,7 +22,7 @@ class PosSet(private val arr: Array<ByteArray>, val startX: Int, val startZ: Int
             val maxX = poses.maxOf { it.first }
             val maxZ = poses.maxOf { it.second }
 
-            val set = PosSet(minX, minZ, maxX, maxZ)
+            val set = PosSet(minX, minZ, maxX, maxZ, Unit)
 
             for (pair in poses) {
                 set[pair.first, pair.second, true] = 1.toByte()
@@ -91,14 +99,22 @@ class PosSet(private val arr: Array<ByteArray>, val startX: Int, val startZ: Int
         endZ: Int
     ) : this(Array(endZ - startZ + 1) { ByteArray(endX - startX + 1) }, startX, startZ)
 
+    constructor(
+        startX: Int,
+        startZ: Int,
+        endX: Int,
+        endZ: Int,
+        disableUpdate: Unit
+    ) : this(Array(endZ - startZ + 1) { ByteArray(endX - startX + 1) }, startX, startZ, startX, startZ, endX, endZ)
 
-    var minX: Int = minX(arr, startX)
+
+    var minX: Int = cMinX
         private set
-    var minZ: Int = minZ(arr, startZ)
+    var minZ: Int = cMinZ
         private set
-    var maxX: Int = maxX(arr, startX)
+    var maxX: Int = cMaxX
         private set
-    var maxZ: Int = maxZ(arr, startZ)
+    var maxZ: Int = cMaxZ
         private set
 
     fun updateMinMax() {
@@ -115,14 +131,11 @@ class PosSet(private val arr: Array<ByteArray>, val startX: Int, val startZ: Int
      * @param z z座標
      */
     operator fun get(x: Int, z: Int): Byte {
-        return getByIndex(x - startX, z - startZ)
-    }
-
-    private fun getByIndex(x: Int, z: Int): Byte {
-        if (z in arr.indices && x in arr[z].indices) {
-            return arr[z][x]
+        return if (isInIndexRange(x, z)) {
+            arr[z - startZ][x - startX]
+        } else {
+            0
         }
-        return 0
     }
 
     /**
@@ -131,17 +144,17 @@ class PosSet(private val arr: Array<ByteArray>, val startX: Int, val startZ: Int
      * @Note [disableUpdate]をtrueにすると、[updateMinMax]を呼び出さない(超推奨)
      */
     operator fun set(x: Int, z: Int, disableUpdate: Boolean, value: Byte) {
-        setByIndex(x - startX, z - startZ, value, disableUpdate)
-    }
-
-    private fun setByIndex(x: Int, z: Int, value: Byte, disableUpdate: Boolean = false) {
-        if (z in arr.indices && x in arr[z].indices) {
-            arr[z][x] = value
+        if (isInIndexRange(x, z)) {
+            arr[z - startZ][x - startX] = value
 
             if (!disableUpdate) {
                 updateMinMax()
             }
         }
+    }
+
+    private fun isInIndexRange(x: Int, z: Int): Boolean {
+        return 0 <= z - startZ && z - startZ < arr.size && 0 <= x - startX && x - startX < arr[z - startZ].size
     }
 
     /**
@@ -159,7 +172,7 @@ class PosSet(private val arr: Array<ByteArray>, val startX: Int, val startZ: Int
         val minZ = min(this.minZ, other.minZ)
 
 
-        val newArr = PosSet(minX, minZ, maxX, maxZ)
+        val newArr = PosSet(minX, minZ, maxX, maxZ, Unit)
 
         val zero = 0.toByte()
 
@@ -183,7 +196,7 @@ class PosSet(private val arr: Array<ByteArray>, val startX: Int, val startZ: Int
         val minX = this.minX
         val minZ = this.minZ
 
-        val newArr = PosSet(minX, minZ, maxX, maxZ)
+        val newArr = PosSet(minX, minZ, maxX, maxZ, Unit)
 
         // Copy this to newArr
         for (z in minZ..maxZ) {
@@ -208,7 +221,7 @@ class PosSet(private val arr: Array<ByteArray>, val startX: Int, val startZ: Int
             this
         } else {
             // Need To Expand
-            val toAdd = PosSet(x, z, x, z)
+            val toAdd = PosSet(x, z, x, z, Unit)
             toAdd[x, z, true] = value
             this + toAdd
         }
@@ -231,7 +244,7 @@ class PosSet(private val arr: Array<ByteArray>, val startX: Int, val startZ: Int
     }
 
     fun clone(): PosSet {
-        val newArr = PosSet(startX, startZ, maxX, maxZ)
+        val newArr = PosSet(startX, startZ, maxX, maxZ, Unit)
         for (z in newArr.minZ..newArr.maxZ) {
             for (x in newArr.minX..newArr.maxX) {
                 newArr[x, z, true] = this[x, z]
@@ -244,7 +257,7 @@ class PosSet(private val arr: Array<ByteArray>, val startX: Int, val startZ: Int
 }
 
 fun fillInRangeFromOutside(all: PosSet, xRange: IntRange, zRange: IntRange): PosSet {
-    val result = PosSet(xRange.first, zRange.first, xRange.last, zRange.last)
+    val result = PosSet(xRange.first, zRange.first, xRange.last, zRange.last, Unit)
     for (z in zRange) {
         for (x in xRange) {
             if (all[x, z] != 0.toByte()) {
@@ -285,7 +298,7 @@ fun fillInRangeFromOutside(all: PosSet, xRange: IntRange, zRange: IntRange): Pos
 }
 
 fun flipInRange(outside: PosSet, xRange: IntRange, zRange: IntRange): PosSet {
-    val out = PosSet(xRange.first, zRange.first, xRange.last, zRange.last)
+    val out = PosSet(xRange.first, zRange.first, xRange.last, zRange.last, Unit)
     for (x in xRange) {
         for (z in zRange) {
             if (outside[x, z] == 0.toByte()) {
