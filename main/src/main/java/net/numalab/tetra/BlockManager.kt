@@ -239,7 +239,12 @@ class BlockManager(private val config: TetraConfig, val plugin: Tetra, val autoS
     private fun fillWith(color: ColorHelper, line: List<Pair<Int, Int>>, y: Double, world: World, drawer: Player) {
         val territory = territoryMap[color]
         if (territory != null) {
-            val fillOrder = FillOrder(line.toList(), territory.clone(), config.maxBlockChangePerTick.value())
+            val fillOrder = FillOrder(
+                line.toList(),
+                territory.clone(),
+                config.maxBlockChangePerTick.value(),
+                config.fillAlgorithm.value()
+            )
             val worldFillOrder = WorldFillOrder(world, y.toInt(), color, fillOrder, drawer) { toFill ->
                 territoryMap[color] = territory + toFill
 

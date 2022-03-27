@@ -6,6 +6,7 @@ import net.kunmc.lab.configlib.value.DoubleValue
 import net.kunmc.lab.configlib.value.EnumValue
 import net.kunmc.lab.configlib.value.IntegerValue
 import net.kunmc.lab.configlib.value.collection.StringListValue
+import net.numalab.tetra.geo.FillAlgorithm
 import org.bukkit.Bukkit
 import org.bukkit.GameMode
 import org.bukkit.entity.Player
@@ -67,4 +68,9 @@ class TetraConfig(plugin: Plugin) : BaseConfig(plugin) {
      * 1tickあたりのブロック変更数
      */
     val maxBlockChangePerTick = IntegerValue(100)
+
+    /**
+     * 塗りつぶしアルゴリズムの切り替え
+     */
+    val fillAlgorithm = EnumValue<FillAlgorithm>(FillAlgorithm.FillFromOutSideOptimized)
 }

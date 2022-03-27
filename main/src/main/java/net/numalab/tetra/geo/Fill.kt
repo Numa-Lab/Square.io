@@ -1,8 +1,5 @@
 package net.numalab.tetra.geo
 
-import java.lang.Integer.max
-import java.lang.Integer.min
-
 /**
  * Fill関係関数だけのファイル
  */
@@ -13,7 +10,7 @@ enum class FillAlgorithm {
     Outline,
 }
 
-fun fill(one: PosSet, two: PosSet, algorithm: FillAlgorithm = FillAlgorithm.FillFromOutside): PosSet {
+fun fill(one: PosSet, two: PosSet, algorithm: FillAlgorithm = FillAlgorithm.FillFromOutSideOptimized): PosSet {
     return when (algorithm) {
         FillAlgorithm.FillFromOutside -> {
             fillOutSide(one, two)
@@ -35,39 +32,21 @@ fun fill(one: PosSet, two: PosSet, algorithm: FillAlgorithm = FillAlgorithm.Fill
 
 private fun fillOutSide(one: PosSet, two: PosSet): PosSet {
     val all = one + two
-    val xRange = (all.minX - 1)..(all.maxX)
-    val zRange = (all.minZ - 1)..(all.maxZ)
+    val xRange = (all.minX - 1)..(all.maxX + 1)
+    val zRange = (all.minZ - 1)..(all.maxZ + 1)
 
     val outside = fillInRangeFromOutside(all, xRange, zRange)
     return flipInRange(outside, all.minX..all.maxX, all.minZ..all.maxZ)
 }
 
-private fun fillOutSideOp(one: PosSet, two: PosSet): PosSet {
-    val oneSize = (one.maxX - one.minX + 1) * (one.maxZ - one.minZ + 1)
-    val twoSize = (two.maxX - two.minX + 1) * (two.maxZ - two.minZ + 1)
+// NotWorking
+private fun fillOutSideOp(base: PosSet, toAdd: PosSet): PosSet {
+    val all = base + toAdd
+    val xRange = (toAdd.minX - 1)..(toAdd.maxX + 1)
+    val zRange = (toAdd.minZ - 1)..(toAdd.maxZ + 1)
 
-    if (twoSize < oneSize) {
-        return fillOutSideOp(two, one)
-    }
-
-    val xRange = (one.minX - 1)..(one.maxX + 1)
-    val zRange = (one.minZ - 1)..(one.maxZ + 1)
-
-    val oTwo = PosSet(xRange.first, zRange.first, xRange.last, zRange.last, Unit)
-
-    for (x in max(one.minX - 1, two.minX)..min(one.maxX + 1, two.maxX)) {
-        for (z in max(one.minZ - 1, two.minZ)..min(one.maxZ + 1, two.maxZ)) {
-            if (two[x, z] != 0.toByte()) {
-                oTwo[x, z, true] = 1.toByte()
-            }
-        }
-    }
-
-    oTwo.updateMinMax()
-
-    val outside = fillInRangeFromOutside(one + oTwo, xRange, zRange)
-
-    return flipInRange(outside, one.minX..one.maxX, one.minZ..one.maxZ) + two
+    val outside = fillInRangeFromOutside(all, xRange, zRange)
+    return flipInRange(outside, toAdd.minX..toAdd.maxX, toAdd.minZ..toAdd.maxZ) + base
 }
 
 // WIP
