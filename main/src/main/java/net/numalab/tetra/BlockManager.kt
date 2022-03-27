@@ -14,7 +14,12 @@ import java.util.function.BiFunction
 /**
  * チームごとに羊毛、色付きガラスの準備をして地面に設置するクラス
  */
-class BlockManager(private val config: TetraConfig, val plugin: Tetra, val autoSetter: AutoSetter) {
+class BlockManager(
+    private val config: TetraConfig,
+    val plugin: Tetra,
+    val autoSetter: AutoSetter,
+    val filler: WorldFiller
+) {
     companion object {
         private fun setColoredWoolAt(location: Location, color: DyeColor) {
             location.block.type = wools[color]!!
@@ -242,12 +247,12 @@ class BlockManager(private val config: TetraConfig, val plugin: Tetra, val autoS
             val fillOrder = FillOrder(
                 line.toList(),
                 territory.clone(),
-                config.maxBlockChangePerTick.value(),
                 config.fillAlgorithm.value()
             )
-            val worldFillOrder = WorldFillOrder(world, y.toInt(), color, fillOrder, drawer) { toFill ->
+            val worldFillOrder = WorldFillOrder(world, y.toInt(), color, fillOrder, drawer, filler) { toFill ->
                 territoryMap[color] = territory + toFill
 
+                // 増加したブロックの上に敵チームがいたらキルする
                 ((territory + toFill) - territory).also { gained ->
                     config.getJoinedPlayer(false)
                         .filter { p -> gained.contains(p.location.blockX to p.location.blockZ) }
@@ -273,9 +278,12 @@ class BlockManager(private val config: TetraConfig, val plugin: Tetra, val autoS
                         }
                 }
 
+                // 他チームの領土をちゃんと削って反映、
+                // 領土が0になったらチーム敗北判定
                 (territoryMap.keys - color).forEach {
                     val removed = territoryMap[it]!! - toFill
                     if (removed.getNotZeros().isEmpty()) {
+                        // このチームが塗りつぶした領土がなくなった
                         val toKillTeam =
                             config.getJoinedTeams().find { t -> ColorHelper.getBy(t) == it }
                         if (toKillTeam != null) {

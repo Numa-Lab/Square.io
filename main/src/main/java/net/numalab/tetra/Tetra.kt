@@ -20,7 +20,8 @@ class Tetra : JavaPlugin() {
     override fun onEnable() {
         // Plugin startup logic
         val autoSetter = AutoSetter(this, config).also { command.autoSetter = it }
-        val manager = BlockManager(config, this, autoSetter).also { command.blockManager = it }
+        val manager =
+            BlockManager(config, this, autoSetter, WorldFiller(this, config)).also { command.blockManager = it }
         BlockBreakPrevent(this, config)
         JumpPrevent(this, config)
         ForceMover(this, config, manager)

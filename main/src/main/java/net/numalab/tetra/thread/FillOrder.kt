@@ -1,7 +1,7 @@
 package net.numalab.tetra.thread
 
-import net.numalab.tetra.BlockManager
 import net.numalab.tetra.ColorHelper
+import net.numalab.tetra.WorldFiller
 import net.numalab.tetra.geo.FillAlgorithm
 import net.numalab.tetra.geo.PosSet
 import net.numalab.tetra.geo.fill
@@ -16,7 +16,6 @@ import org.bukkit.plugin.java.JavaPlugin
 data class FillOrder(
     val line: List<Pair<Int, Int>>,
     val territory: PosSet,
-    val maxBlockChangePerTick: Int, // 分割するサイズ
     val fillAlgorithm: FillAlgorithm
 )
 
@@ -31,6 +30,7 @@ data class WorldFillOrder(
     val fillOrder: FillOrder,
     val drawer: Player,
     // Called when the calculating task is finished
+    val filler: WorldFiller,
     val callBack: (PosSet) -> Unit
 )
 
@@ -46,33 +46,23 @@ private class WorldFillRunnable(val order: WorldFillOrder, val plugin: JavaPlugi
         order.fillOrder.resolve({ callBack(it, callBack) }, plugin)
     }
 
-    private fun callBack(p: Pair<PosSet, List<PosSet>>?, callBack: (PosSet) -> Unit) {
+    private fun callBack(p: PosSet?, callBack: (PosSet) -> Unit) {
         if (p == null) {
             return
         } else {
-            callBack(p.first)
-
-            p.second.forEachIndexed { index, t ->
-                plugin.server.scheduler.runTaskLater(plugin, Runnable { changeBlock(t) }, index.toLong())
-            }
-
-            plugin.server.scheduler.runTaskLater(plugin, Runnable {
-                order.callBack(p.first)
-            }, p.second.lastIndex + 1L)
+            callBack(p)
+            changeBlock(p)
         }
     }
 
     private fun changeBlock(toChange: PosSet) {
-        toChange.getNotZeros().forEach {
-            val x = it.first
-            val z = it.second
-            val y = order.y
-            BlockManager.setColoredWoolAt(Location(order.world, x.toDouble(), y.toDouble(), z.toDouble()), order.color)
-        }
+        val y = order.y.toDouble()
+        val toAdd = toChange.getNotZeros().map { Location(order.world, it.first.toDouble(), y, it.second.toDouble()) }
+        order.filler.addQueue(toAdd, order.color)
     }
 }
 
-private fun FillOrder.resolve(callBack: (Pair<PosSet, List<PosSet>>?) -> Unit, plugin: JavaPlugin) {
+private fun FillOrder.resolve(callBack: (PosSet?) -> Unit, plugin: JavaPlugin) {
     val p = FillRunnable(this).run()
     callBack(p)
 }
@@ -81,15 +71,13 @@ private fun FillOrder.resolve(callBack: (Pair<PosSet, List<PosSet>>?) -> Unit, p
  * execute in another thread
  */
 private class FillRunnable(val order: FillOrder) {
-    fun run(): Pair<PosSet, List<PosSet>>? {
+    fun run(): PosSet? {
         val linePosSet = PosSet.of(order.line)
         val toFill = fill(linePosSet, order.territory, order.fillAlgorithm).getNotZeros()
         return if (toFill.isEmpty()) {
             null
         } else {
-            PosSet.of(toFill.map { l -> l.first to l.second }) to
-                    (toFill.chunked(order.maxBlockChangePerTick)
-                        .map { PosSet.of(it.map { l -> Pair(l.first, l.second) }) })
+            PosSet.of(toFill.map { l -> l.first to l.second })
         }
     }
 }
