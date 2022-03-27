@@ -1,6 +1,7 @@
 package net.numalab.tetra
 
 import org.bukkit.Location
+import org.bukkit.Material
 import org.bukkit.plugin.Plugin
 
 class WorldFiller(val plugin: Plugin, val config: TetraConfig) {
@@ -10,7 +11,7 @@ class WorldFiller(val plugin: Plugin, val config: TetraConfig) {
         }, 0, 1)
     }
 
-    private val internal = mutableMapOf<Location, ColorHelper>()
+    private val internal = mutableMapOf<Location, Material>()
     private val toUpdate = mutableListOf<Location>()
 
     private fun tick() {
@@ -18,9 +19,9 @@ class WorldFiller(val plugin: Plugin, val config: TetraConfig) {
         if (toUpdate.isEmpty()) return
         val toApply = toUpdate.filterIndexed { i, _ -> i + 1 <= config.maxBlockChangePerTick.value() }
         toApply.forEach {
-            val color = internal[it] ?: return@forEach
-            if (!it.block.type.isGlass() || it.block.type.sameColoredGlass(color.dye)) {
-                BlockManager.setColoredWoolAt(it, color)
+            val material = internal[it] ?: return@forEach
+            if (!it.block.type.isGlass()) {
+                it.block.type = material
             }
         }
 
@@ -28,8 +29,13 @@ class WorldFiller(val plugin: Plugin, val config: TetraConfig) {
     }
 
     fun addQueue(list: List<Location>, color: ColorHelper) {
+        val material = wools[color.dye]!!
+        addQueue(list, material)
+    }
+
+    fun addQueue(list: List<Location>, material: Material) {
         list.forEach {
-            internal[it] = color
+            internal[it] = material
             toUpdate.add(it)
         }
     }

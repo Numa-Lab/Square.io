@@ -54,17 +54,18 @@ class BlockManager(
     /**
      * 陣地のマップ
      */
-    private val territoryMap = mutableMapOf<ColorHelper, PosSet>()
+    val territoryMap = mutableMapOf<ColorHelper, PosSet>()
 
     /**
      * プレイヤーごとの線
      */
-    private val playerLineMap = mutableMapOf<UUID, List<Pair<Int, Int>>>()
+    val playerLineMap = mutableMapOf<UUID, List<Pair<Int, Int>>>()
 
     private val scoreMap = mutableMapOf<Team, Int>()
 
     private val scoreBoardManager = ScoreBoardManager()
     private val deathMessenger = DeathMessenger(plugin, config)
+    private val killManager = KillManager(deathMessenger, this, config)
 
     private fun task() {
         if (config.isGoingOn.value()) {
@@ -74,7 +75,7 @@ class BlockManager(
                 val teamColor = ColorHelper.getBy(team) ?: continue
 
                 team.entries
-                    .mapNotNull { e -> Bukkit.getOnlinePlayers().find { it.name == e } }
+                    .mapNotNull { e -> Bukkit.getPlayer(e) }
                     .filter { it.gameMode == config.targetGameMode.value() }
                     .forEach {
                         val bottomLocation = it.location.block.getRelative(0, -1, 0).location
@@ -105,99 +106,13 @@ class BlockManager(
                                     teamColor.dye
                                 )
                             ) {
-                                // 他のチームの線に触れた
-                                //キルログ処理
-                                val toKillUUID = playerLineMap.filter { (_, line) ->
-                                    line.contains(
-                                        Pair(
-                                            bottomLocation.blockX,
-                                            bottomLocation.blockZ
-                                        )
-                                    )
-                                }.keys.firstOrNull()
-
-                                val toKill = if (toKillUUID != null) Bukkit.getPlayer(toKillUUID) else null
-                                if (toKill != null) {
-                                    val toKillName = toKill.name
-                                    val toKillTeam =
-                                        config.getJoinedTeams().find { t -> t.entries.contains(toKillName) }
-                                    if (toKillTeam != null) {
-                                        val isFinalKill =
-                                            (toKillTeam.entries.filter { e ->
-                                                val p =
-                                                    Bukkit.getPlayer(e); p != null && p.gameMode == config.targetGameMode.value()
-                                            } - toKillName).isEmpty()
-
-                                        deathMessenger.addDeadQueue(toKill, it, isFinalKill)
-                                        toKill.health = 0.0
-                                        toKill.gameMode = GameMode.SPECTATOR
-
-                                        // チーム死亡判定・ゲーム終了判定
-                                        if (isFinalKill) {
-                                            val lastTeam = deathMessenger.onTeamDeath(
-                                                toKillTeam,
-                                                getScore(toKillTeam)
-                                            )
-                                            val toKillColor = ColorHelper.getBy(toKillTeam)
-                                            if (toKillColor != null) {
-                                                val toKillTerritory = territoryMap[toKillColor]
-                                                // チームが塗りつぶしをしている場合は塗りつぶしをリセット
-                                                toKillTerritory?.getNotZeros()?.forEach { tr ->
-                                                    val block =
-                                                        it.world.getBlockAt(tr.first, bottomLocation.blockY, tr.second)
-                                                    block.type = Material.WHITE_WOOL
-                                                }
-
-                                                territoryMap.remove(toKillColor)
-                                            }
-
-                                            if (lastTeam.first) {
-                                                // ゲーム終了
-                                                val winner = lastTeam.second
-                                                if (winner != null) {
-                                                    deathMessenger.broadCastResult(
-                                                        winner to getScore(winner),
-                                                        (config.getJoinedTeams() - winner).map { t ->
-                                                            t to getScore(t)
-                                                        })
-                                                } else {
-                                                    // 勝者がいない
-                                                    deathMessenger.broadCastResult(
-                                                        null,
-                                                        (config.getJoinedTeams()).map { t ->
-                                                            t to getScore(t)
-                                                        })
-                                                }
-
-                                                if (config.isAutoOff.value()) {
-                                                    // 自動的に終了
-                                                    config.isGoingOn.value(false)
-                                                    reset()
-                                                }
-                                            }
-                                        }
-                                    }
-                                    // 引いてきた線を元に戻す
-                                    playerLineMap[toKill.uniqueId]?.forEach { pair ->
-                                        val found = territoryMap.entries.firstOrNull { e -> e.value.contains(pair) }
-                                        if (found != null) {
-                                            // 羊毛に戻してあげる
-                                            setColoredWoolAt(
-                                                bottomLocation.add(
-                                                    pair.first.toDouble(),
-                                                    bottomLocation.blockY.toDouble(),
-                                                    pair.second.toDouble()
-                                                ),
-                                                found.key.dye
-                                            )
-                                        } else {
-                                            // 何も無かったことにする
-                                            it.world.getBlockAt(pair.first, bottomLocation.blockY, pair.second).type =
-                                                Material.WHITE_WOOL
-                                        }
-                                    }
-                                    playerLineMap.remove(toKill.uniqueId)   // 線をリセット
-                                }
+                                // キル処理
+                                killManager.killPlayer(
+                                    it,
+                                    bottomLocation.blockX to bottomLocation.blockZ,
+                                    bottomLocation.world,
+                                    bottomLocation.blockY
+                                )
                             } else {
                                 // 線追加
                                 setColoredGlassAt(bottomLocation, teamColor)
@@ -363,7 +278,7 @@ class BlockManager(
     }
 }
 
-private val wools = mapOf(
+val wools = mapOf(
     DyeColor.WHITE to Material.WHITE_WOOL,
     DyeColor.ORANGE to Material.ORANGE_WOOL,
     DyeColor.MAGENTA to Material.MAGENTA_WOOL,
@@ -382,7 +297,7 @@ private val wools = mapOf(
     DyeColor.BLACK to Material.BLACK_WOOL
 )
 
-private val glasses = mapOf(
+val glasses = mapOf(
     DyeColor.WHITE to Material.WHITE_STAINED_GLASS,
     DyeColor.ORANGE to Material.ORANGE_STAINED_GLASS,
     DyeColor.MAGENTA to Material.MAGENTA_STAINED_GLASS,
