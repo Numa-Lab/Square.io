@@ -48,7 +48,7 @@ class BlockManager(
 
     private val scoreMap = mutableMapOf<Team, Int>()
 
-    private val scoreBoardManager = ScoreBoardManager()
+    private val scoreBoardManager = ScoreBoardManager(config)
     private val deathMessenger = DeathMessenger(plugin, config)
     private val killManager = KillManager(deathMessenger, this, config)
 
@@ -154,7 +154,7 @@ class BlockManager(
 
                 // 増加したブロックの上に敵チームがいたらキルする
                 ((territory + toFill) - territory).also { gained ->
-                    killManager.killPlayer(gained, drawer)
+                    killManager.killPlayer(gained, drawer, color)
                 }
 
                 // 他チームの領土をちゃんと削って反映、
@@ -264,10 +264,30 @@ fun Material.sameColoredGlass(dyeColor: DyeColor): Boolean {
     }
 }
 
-fun Material.getWoolColor(): DyeColor? {
+fun Material.getWoolDyeColor(): DyeColor? {
     return if (this.isWool()) {
         wools.filter { it.value == this }.keys.first()
     } else {
         null
     }
+}
+
+fun Material.getWoolColor(): ColorHelper? {
+    val c = this.getWoolDyeColor()
+    if (c == null) return null
+    else return ColorHelper.getBy(c)
+}
+
+fun Material.getGlassDyeColor(): DyeColor? {
+    return if (this.isGlass()) {
+        glasses.filter { it.value == this }.keys.first()
+    } else {
+        null
+    }
+}
+
+fun Material.getGlassColor(): ColorHelper? {
+    val c = this.getGlassDyeColor()
+    if (c == null) return null
+    else return ColorHelper.getBy(c)
 }

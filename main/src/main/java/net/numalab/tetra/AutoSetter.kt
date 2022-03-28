@@ -21,7 +21,7 @@ class AutoSetter(plugin: Tetra, val config: TetraConfig) {
                 .onEach { (player, team) ->
                     if (team != null) {
                         if (!team.entries.contains(player.name)) team.addEntry(player.name)
-                        map[player.uniqueId] = player.location.clone()
+                        map[player.uniqueId] = player.location.block.location.clone()
                     }
                 }
         }
@@ -47,7 +47,7 @@ class AutoSetter(plugin: Tetra, val config: TetraConfig) {
 
     private fun getColor(player: Player): Team? {
         val bottomBlock = player.location.add(0.0, -1.0, 0.0).block
-        val color = bottomBlock.type.getWoolColor()
+        val color = bottomBlock.type.getWoolDyeColor()
         if (color != null) {
             val colorHelper = ColorHelper.getBy(color) ?: return null
             val team =

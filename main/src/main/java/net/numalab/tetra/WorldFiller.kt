@@ -20,10 +20,26 @@ class WorldFiller(val plugin: Plugin, val config: TetraConfig) {
         val toApply = toUpdate.filterIndexed { i, _ -> i + 1 <= config.maxBlockChangePerTick.value() }
         toApply.forEach {
             val material = internal[it] ?: return@forEach
-            it.block.type = material
+            if (isSameColor(it.block.type, material)) {
+                it.block.type = material
+            }
         }
 
         toUpdate.removeAll(toApply)
+    }
+
+    private fun isSameColor(from: Material, to: Material): Boolean {
+        val fromColor = getColor(from)
+        val toColor = getColor(to)
+        return fromColor == toColor || fromColor == null || toColor == null
+    }
+
+    private fun getColor(material: Material): ColorHelper? {
+        val glass = material.getGlassColor()
+        if (glass != null) return glass
+        val wool = material.getWoolColor()
+        if (wool != null) return wool
+        return null
     }
 
     fun addQueue(list: List<Location>, color: ColorHelper) {

@@ -20,17 +20,28 @@ class KillManager(val deathMessenger: DeathMessenger, val blockManager: BlockMan
     /**
      * 塗りつぶしで増えたところにいた人をキルする
      */
-    fun killPlayer(gained: PosSet, gainer: Player) {
+    fun killPlayer(gained: PosSet, gainer: Player, color: ColorHelper) {
         config
             .getJoinedPlayer(false)
             .filter { gained[it.location.blockX, it.location.blockZ] != 0.toByte() }
-            .forEach { killPlayer(it, gainer, it.location.world, it.location.blockY) }
+            .filter {
+                val team = getTeam(it) ?: return@filter false
+                ColorHelper.getBy(team) != color
+            }
+            .forEach {
+                killPlayer(
+                    it,
+                    gainer,
+                    it.location.world,
+                    it.location.block.getRelative(0, -1, 0).location.blockY
+                )
+            }
     }
 
     fun killEntireTeam(team: Team) {
         if (!isValidTeam(team)) return
         val en = team.entries.mapNotNull { Bukkit.getPlayer(it) }.filter { isValidPlayer(it) }
-        en.forEach { killPlayer(it, null, it.location.world, it.location.blockY) }
+        en.forEach { killPlayer(it, null, it.location.world, it.location.block.getRelative(0, -1, 0).location.blockY) }
     }
 
     fun killEntireTeam(color: ColorHelper) {
@@ -41,10 +52,6 @@ class KillManager(val deathMessenger: DeathMessenger, val blockManager: BlockMan
     private fun killPlayer(killed: Player, killer: Player?, world: World, y: Int) {
         // プレイヤーの線リセット
         resetPlayerLine(killed, world, y)
-
-        // 死亡処理
-        killed.health = 0.0
-        killed.gameMode = GameMode.SPECTATOR
 
         val team = getTeam(killed)
 
@@ -73,6 +80,10 @@ class KillManager(val deathMessenger: DeathMessenger, val blockManager: BlockMan
         } else {
             deathMessenger.addDeadQueue(killed, killer, true)
         }
+
+        // 死亡処理
+        killed.health = 0.0
+        killed.gameMode = GameMode.SPECTATOR
     }
 
     /**

@@ -6,7 +6,7 @@ import org.bukkit.scoreboard.DisplaySlot.SIDEBAR
 import org.bukkit.scoreboard.Objective
 import org.bukkit.scoreboard.Team
 
-class ScoreBoardManager {
+class ScoreBoardManager(val config: TetraConfig) {
     private val scoreBoard = Bukkit.getScoreboardManager().mainScoreboard
     private fun getScoreObj(): Objective {
         val o = scoreBoard.getObjective("Te_score")
@@ -44,6 +44,8 @@ class ScoreBoardManager {
     }
 
     fun reset() {
-        scoreObj = getScoreObj()
+        config.getJoinedTeams().forEach {
+            Bukkit.getScoreboardManager().mainScoreboard.resetScores(it.name)
+        }
     }
 }
