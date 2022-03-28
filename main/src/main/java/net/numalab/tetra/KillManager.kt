@@ -56,9 +56,12 @@ class KillManager(val deathMessenger: DeathMessenger, val blockManager: BlockMan
                 if (isLastTeam(team)) {
                     // ゲーム終了処理
                     val lastTeam = getLastTeam(team)
+                    val remaining = config.getJoinedTeams()
+                        .filter { it.name != lastTeam.name }
+                        .map { it to blockManager.getScore(it) }
                     deathMessenger.broadCastResult(
                         lastTeam to blockManager.getScore(lastTeam),
-                        config.getJoinedTeams().map { it to blockManager.getScore(it) }
+                        remaining
                     )
 
                     if (config.isAutoOff.value()) {

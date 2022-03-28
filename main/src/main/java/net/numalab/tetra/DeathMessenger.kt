@@ -10,25 +10,26 @@ import org.bukkit.event.Listener
 import org.bukkit.event.entity.PlayerDeathEvent
 import org.bukkit.plugin.java.JavaPlugin
 import org.bukkit.scoreboard.Team
+import java.util.*
 
 class DeathMessenger(plugin: JavaPlugin, private val config: TetraConfig) : Listener {
     init {
         plugin.server.pluginManager.registerEvents(this, plugin)
     }
 
-    private val deadQueue = mutableListOf<Pair<Player, Component>>()
+    private val deadQueue = mutableListOf<Pair<UUID, Component>>()
 
     @EventHandler
     private fun onDeath(e: PlayerDeathEvent) {
         if (!config.isGoingOn.value()) return
-        val found = deadQueue.find { it.first.uniqueId == e.entity.uniqueId }
+        val found = deadQueue.find { it.first == e.entity.uniqueId }
         if (found != null) {
             e.deathMessage(found.second)
         }
     }
 
     fun addDeadQueue(dead: Player, killer: Player?, isLastDeath: Boolean) {
-        deadQueue.add(Pair(dead, getDeathMessage(dead, killer, isLastDeath)))
+        deadQueue.add(Pair(dead.uniqueId, getDeathMessage(dead, killer, isLastDeath)))
     }
 
     private fun getDeathMessage(dead: Player, killer: Player?, isLastDeath: Boolean): Component {
@@ -64,29 +65,12 @@ class DeathMessenger(plugin: JavaPlugin, private val config: TetraConfig) : List
     /**
      * @return 最後のチーム、まだ最後じゃない場合はnull
      */
-    fun onTeamDeath(team: Team, score: Int): Pair<Boolean, Team?> {
+    fun onTeamDeath(team: Team, score: Int) {
         Bukkit.broadcast(
             Component.text("${team.name}は${score}ブロック塗りつぶして滅んだ")
                 .append(Component.space())
                 .append(Component.text("チームキル!").color(NamedTextColor.AQUA).decorate(TextDecoration.BOLD))
         )
-        return checkGameEnd()
-    }
-
-    private fun checkGameEnd(): Pair<Boolean, Team?> {
-        val notEndTeam = config.getJoinedTeams()
-            .filterNot {
-                it.entries.mapNotNull { e -> Bukkit.getPlayer(e) }
-                    .all { p -> p.gameMode != config.targetGameMode.value() || p.isDead }
-                        || it.entries.isEmpty()
-            }
-        if (notEndTeam.size == 1) {
-            return true to notEndTeam.first()
-        } else if (notEndTeam.isEmpty()) {
-            // なぜか勝者がいない
-            return true to null
-        }
-        return false to null
     }
 
     fun broadCastResult(remainedTeam: Pair<Team, Int>?, teams: List<Pair<Team, Int>>) {

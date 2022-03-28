@@ -43,11 +43,7 @@ class ScoreBoardManager {
         score.score = if (config.isGoingOn.value()) 0 else 1
     }
 
-    /**
-     * すべての表示を消去する
-     */
     fun reset() {
-        scoreObj.unregister()
         scoreObj = getScoreObj()
     }
 }

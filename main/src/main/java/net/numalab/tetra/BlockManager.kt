@@ -83,7 +83,7 @@ class BlockManager(
                                 updateScore()
                             } else {
                                 // 線追加
-                                filler.addQueue(bottomLocation, glasses[teamColor.dye]!!)
+                                filler.immediate(bottomLocation, glasses[teamColor.dye]!!)
                                 addPlayerLineRecord(it, MinecraftAdapter.toPos(bottomLocation))
                             }
                         } else {
@@ -100,7 +100,7 @@ class BlockManager(
                                 )
                             } else {
                                 // 線追加
-                                filler.addQueue(bottomLocation, glasses[teamColor.dye]!!)
+                                filler.immediate(bottomLocation, glasses[teamColor.dye]!!)
                                 addPlayerLineRecord(it, MinecraftAdapter.toPos(bottomLocation))
                             }
                         }

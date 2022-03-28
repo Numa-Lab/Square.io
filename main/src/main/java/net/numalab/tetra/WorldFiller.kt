@@ -43,6 +43,10 @@ class WorldFiller(val plugin: Plugin, val config: TetraConfig) {
         toUpdate.add(location)
     }
 
+    fun immediate(location: Location, material: Material) {
+        location.block.type = material
+    }
+
     fun clear() {
         internal.clear()
         toUpdate.clear()
