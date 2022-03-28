@@ -5,6 +5,8 @@ import net.numalab.tetra.WorldFiller
 import net.numalab.tetra.geo.FillAlgorithm
 import net.numalab.tetra.geo.PosSet
 import net.numalab.tetra.geo.fill
+import net.numalab.tetra.isGlass
+import net.numalab.tetra.sameColoredGlass
 import org.bukkit.Location
 import org.bukkit.World
 import org.bukkit.entity.Player
@@ -50,15 +52,23 @@ private class WorldFillRunnable(val order: WorldFillOrder, val plugin: JavaPlugi
         if (p == null) {
             return
         } else {
-            callBack(p)
             changeBlock(p)
+            callBack(p)
         }
     }
 
     private fun changeBlock(toChange: PosSet) {
         val y = order.y.toDouble()
-        val toAdd = toChange.getNotZeros().map { Location(order.world, it.first.toDouble(), y, it.second.toDouble()) }
-        order.filler.addQueue(toAdd, order.color)
+        val toFill = toChange.getNotZeros()
+            .map { Location(order.world, it.first.toDouble(), y, it.second.toDouble()) }
+            .filter {
+                if (it.block.type.isGlass()) {
+                    it.block.type.sameColoredGlass(order.color.dye)
+                } else {
+                    true
+                }
+            }
+        order.filler.addQueue(toFill, order.color)
     }
 }
 

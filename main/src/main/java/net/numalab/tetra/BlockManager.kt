@@ -5,7 +5,10 @@ import net.numalab.tetra.geo.PosSet
 import net.numalab.tetra.thread.FillOrder
 import net.numalab.tetra.thread.WorldFillOrder
 import net.numalab.tetra.thread.resolve
-import org.bukkit.*
+import org.bukkit.Bukkit
+import org.bukkit.DyeColor
+import org.bukkit.Material
+import org.bukkit.World
 import org.bukkit.entity.Player
 import org.bukkit.scoreboard.Team
 import java.util.*
@@ -20,24 +23,6 @@ class BlockManager(
     val autoSetter: AutoSetter,
     val filler: WorldFiller
 ) {
-    companion object {
-        private fun setColoredWoolAt(location: Location, color: DyeColor) {
-            location.block.type = wools[color]!!
-        }
-
-        private fun setColoredGlassAt(location: Location, dyeColor: DyeColor) {
-            location.block.type = glasses[dyeColor]!!
-        }
-
-        fun setColoredWoolAt(location: Location, color: ColorHelper) {
-            setColoredWoolAt(location, color.dye)
-        }
-
-        fun setColoredGlassAt(location: Location, color: ColorHelper) {
-            setColoredGlassAt(location, color.dye)
-        }
-    }
-
     init {
         plugin.server.scheduler.runTaskTimer(plugin, Runnable { task() }, 1, 1)
 
@@ -98,7 +83,7 @@ class BlockManager(
                                 updateScore()
                             } else {
                                 // 線追加
-                                setColoredGlassAt(bottomLocation, teamColor)
+                                filler.addQueue(bottomLocation, glasses[teamColor.dye]!!)
                                 addPlayerLineRecord(it, MinecraftAdapter.toPos(bottomLocation))
                             }
                         } else {
@@ -115,7 +100,7 @@ class BlockManager(
                                 )
                             } else {
                                 // 線追加
-                                setColoredGlassAt(bottomLocation, teamColor)
+                                filler.addQueue(bottomLocation, glasses[teamColor.dye]!!)
                                 addPlayerLineRecord(it, MinecraftAdapter.toPos(bottomLocation))
                             }
                         }
@@ -169,28 +154,7 @@ class BlockManager(
 
                 // 増加したブロックの上に敵チームがいたらキルする
                 ((territory + toFill) - territory).also { gained ->
-                    config.getJoinedPlayer(false)
-                        .filter { p -> gained.contains(p.location.blockX to p.location.blockZ) }
-                        .forEach { p ->
-                            val team = config.getJoinedTeams().find { it.entries.contains(p.name) }
-                            if (team != null && ColorHelper.getBy(team) == color) {
-                                // 同じ色のチームの人は殺さないようにする
-                                return@forEach
-                            }
-
-                            // 塗りつぶして増えた部分にいた人をkill
-                            p.health = 0.0
-                            p.gameMode = GameMode.SPECTATOR
-
-                            val t = config.getJoinedTeams().find { t -> t.entries.contains(p.name) }
-                            if (t != null) {
-                                val remain = t.entries.mapNotNull { e -> Bukkit.getPlayer(e) }
-                                    .filter { it.gameMode == config.targetGameMode.value() }
-                                deathMessenger.addDeadQueue(p, drawer, remain.isEmpty())
-                            } else {
-                                deathMessenger.addDeadQueue(p, drawer, false)
-                            }
-                        }
+                    killManager.killPlayer(gained, drawer)
                 }
 
                 // 他チームの領土をちゃんと削って反映、
@@ -199,46 +163,7 @@ class BlockManager(
                     val removed = territoryMap[it]!! - toFill
                     if (removed.getNotZeros().isEmpty()) {
                         // このチームが塗りつぶした領土がなくなった
-                        val toKillTeam =
-                            config.getJoinedTeams().find { t -> ColorHelper.getBy(t) == it }
-                        if (toKillTeam != null) {
-                            val toKill = toKillTeam.entries.mapNotNull { e -> Bukkit.getPlayer(e) }
-                                .filter { p -> p.gameMode == config.targetGameMode.value() }
-                            toKill.forEachIndexed { index, k ->
-                                deathMessenger.addDeadQueue(k, drawer, index == toKill.lastIndex)
-                                k.health = 0.0
-                                k.gameMode = GameMode.SPECTATOR
-                            }
-
-                            val lastTeam = deathMessenger.onTeamDeath(
-                                toKillTeam,
-                                getScore(toKillTeam)
-                            )
-
-                            if (lastTeam.first) {
-                                val winner = lastTeam.second
-                                if (winner != null) {
-                                    deathMessenger.broadCastResult(
-                                        winner to getScore(winner),
-                                        (config.getJoinedTeams() - winner).map { t ->
-                                            t to getScore(t)
-                                        })
-                                } else {
-                                    // 勝者がいない
-                                    deathMessenger.broadCastResult(
-                                        null,
-                                        (config.getJoinedTeams()).map { t ->
-                                            t to getScore(t)
-                                        })
-                                }
-
-                                if (config.isAutoOff.value()) {
-                                    // 自動的に終了
-                                    config.isGoingOn.value(false)
-                                    reset()
-                                }
-                            }
-                        }
+                        killManager.killEntireTeam(it)
                         territoryMap.remove(it)
                     } else {
                         territoryMap[it] = removed
@@ -275,6 +200,7 @@ class BlockManager(
         autoSetter.clear()
         scoreBoardManager.reset()
         scoreMap.clear()
+        filler.clear()
     }
 }
 

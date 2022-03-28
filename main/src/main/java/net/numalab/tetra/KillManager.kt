@@ -1,5 +1,6 @@
 package net.numalab.tetra
 
+import net.numalab.tetra.geo.PosSet
 import org.bukkit.*
 import org.bukkit.entity.Player
 import org.bukkit.scoreboard.Team
@@ -8,23 +9,53 @@ class KillManager(val deathMessenger: DeathMessenger, val blockManager: BlockMan
     /**
      * 敵チームの線に触れた人を殺す
      */
-    fun killPlayer(killed: Player, lineLocation: Pair<Int, Int>, world: World, y: Int) {
-        val killerUUID = blockManager.playerLineMap.toList().find { it.second.contains(lineLocation) }
-        val killer = killerUUID?.first?.let { Bukkit.getPlayer(it) }
-        val killedTeam = getTeam(killed)
+    fun killPlayer(killer: Player, lineLocation: Pair<Int, Int>, world: World, y: Int) {
+        val killedUUID = blockManager.playerLineMap.toList().find { it.second.contains(lineLocation) }
+        val killed = killedUUID?.first?.let { Bukkit.getPlayer(it) }
+        if (killed != null) {
+            killPlayer(killed, killer, world, y)
+        }
+    }
 
+    /**
+     * 塗りつぶしで増えたところにいた人をキルする
+     */
+    fun killPlayer(gained: PosSet, gainer: Player) {
+        config
+            .getJoinedPlayer(false)
+            .filter { gained[it.location.blockX, it.location.blockZ] != 0.toByte() }
+            .forEach { killPlayer(it, gainer, it.location.world, it.location.blockY) }
+    }
+
+    fun killEntireTeam(team: Team) {
+        if (!isValidTeam(team)) return
+        val en = team.entries.mapNotNull { Bukkit.getPlayer(it) }.filter { isValidPlayer(it) }
+        en.forEach { killPlayer(it, null, it.location.world, it.location.blockY) }
+    }
+
+    fun killEntireTeam(color: ColorHelper) {
+        val team = getTeam(color)
+        if (team != null) killEntireTeam(team)
+    }
+
+    private fun killPlayer(killed: Player, killer: Player?, world: World, y: Int) {
         // プレイヤーの線リセット
         resetPlayerLine(killed, world, y)
 
+        // 死亡処理
+        killed.health = 0.0
+        killed.gameMode = GameMode.SPECTATOR
 
-        if (killedTeam != null) {
-            val isLastDeath = isLastDeath(killed, killedTeam)
+        val team = getTeam(killed)
+
+        if (team != null) {
+            val isLastDeath = isLastDeath(killed, team)
             deathMessenger.addDeadQueue(killed, killer, isLastDeath)
             if (isLastDeath) {
-                killTeam(killedTeam, world, y)
-                if (isLastTeam(killedTeam)) {
+                killTeam(team, world, y)
+                if (isLastTeam(team)) {
                     // ゲーム終了処理
-                    val lastTeam = getLastTeam(killedTeam)
+                    val lastTeam = getLastTeam(team)
                     deathMessenger.broadCastResult(
                         lastTeam to blockManager.getScore(lastTeam),
                         config.getJoinedTeams().map { it to blockManager.getScore(it) }
@@ -39,11 +70,6 @@ class KillManager(val deathMessenger: DeathMessenger, val blockManager: BlockMan
         } else {
             deathMessenger.addDeadQueue(killed, killer, true)
         }
-
-
-        // 死亡処理
-        killed.health = 0.0
-        killed.gameMode = GameMode.SPECTATOR
     }
 
     /**
@@ -80,7 +106,11 @@ class KillManager(val deathMessenger: DeathMessenger, val blockManager: BlockMan
     }
 
     private fun getTeam(player: Player): Team? {
-        return Bukkit.getScoreboardManager().mainScoreboard.teams.find { it.entries.contains(player.name) }
+        return config.getJoinedTeams().find { it.entries.contains(player.name) }
+    }
+
+    private fun getTeam(color: ColorHelper): Team? {
+        return config.getJoinedTeams().find { ColorHelper.getBy(it) == color }
     }
 
     /**
@@ -113,9 +143,9 @@ class KillManager(val deathMessenger: DeathMessenger, val blockManager: BlockMan
             val t = tl.find { l -> l.second[it.first, it.second] != 0.toByte() }
             val location = Location(world, it.first.toDouble(), y.toDouble(), it.second.toDouble())
             if (t != null) {
-                location.block.type = wools[t.first.dye]!!
+                blockManager.filler.addQueue(location, wools[t.first.dye]!!)
             } else {
-                location.block.type = Material.WHITE_WOOL
+                blockManager.filler.addQueue(location, Material.WHITE_WOOL)
             }
         }
 

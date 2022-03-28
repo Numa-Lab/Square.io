@@ -20,9 +20,7 @@ class WorldFiller(val plugin: Plugin, val config: TetraConfig) {
         val toApply = toUpdate.filterIndexed { i, _ -> i + 1 <= config.maxBlockChangePerTick.value() }
         toApply.forEach {
             val material = internal[it] ?: return@forEach
-            if (!it.block.type.isGlass()) {
-                it.block.type = material
-            }
+            it.block.type = material
         }
 
         toUpdate.removeAll(toApply)
@@ -38,5 +36,15 @@ class WorldFiller(val plugin: Plugin, val config: TetraConfig) {
             internal[it] = material
             toUpdate.add(it)
         }
+    }
+
+    fun addQueue(location: Location, material: Material) {
+        internal[location] = material
+        toUpdate.add(location)
+    }
+
+    fun clear() {
+        internal.clear()
+        toUpdate.clear()
     }
 }
